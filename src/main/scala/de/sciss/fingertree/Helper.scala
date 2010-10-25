@@ -9,11 +9,6 @@ object Helper extends Reducers /* with Endos */ {
      lazy val value = x
    }
 
-   // HH from Options
-   implicit def OptionTo[A](o: Option[A]): OptionW[A] = new OptionW[A] {
-     val value = o
-   }
-
    // HH from Zeroes
    def zero[Z](z: Z): Zero[Z] = new Zero[Z] {
      val zero = z
@@ -23,9 +18,4 @@ object Helper extends Reducers /* with Endos */ {
    def semigroup[S](f: (S, => S) => S): Semigroup[S] = new Semigroup[S] {
      def append(s1: S, s2: => S) = f(s1, s2)
    }
-
-//   // MAsLow
-//   implicit def maImplicit[M[_], A](a: M[A]): MA[M, A] = new MA[M, A] {
-//     val value = a
-//   }
 }

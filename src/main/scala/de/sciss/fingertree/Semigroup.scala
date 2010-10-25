@@ -24,7 +24,7 @@ trait Semigroups {
 }
 */
 
-trait SemigroupLow {
+private[fingertree] trait SemigroupLow {
   implicit def TraversableSemigroup[X, CC[Y] <: collection.TraversableLike[Y, CC[Y]] : CanBuildAnySelf]: Semigroup[CC[X]] = new Semigroup[CC[X]] {
     def append(s1: CC[X], s2: => CC[X]): CC[X] = {
       implicit val cbf = implicitly[CanBuildAnySelf[CC]].builder[X, X]

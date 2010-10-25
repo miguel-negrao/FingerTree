@@ -12,7 +12,7 @@ package de.sciss.fingertree
  */
 trait Monoid[M] extends Zero[M] with Semigroup[M]
 
-abstract class MonoidLow {
+private[fingertree] abstract class MonoidLow {
   implicit def monoid[M](implicit s: Semigroup[M], z: Zero[M]): Monoid[M] = new Monoid[M] {
     def append(s1: M, s2: => M) = s append (s1, s2)
 

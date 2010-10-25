@@ -33,7 +33,7 @@ import Helper._
 */
 }
 
-trait Reducers {
+private[fingertree] trait Reducers {
 /* HH  import Scalaz._ */
 
   implicit def ReducerMonoid[C, M](r: Reducer[C, M]) = r.monoid

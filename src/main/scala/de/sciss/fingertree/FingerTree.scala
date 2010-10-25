@@ -40,6 +40,7 @@ sealed abstract class ViewR[S[_], A] {
 
 import FingerTree._
 
+// aka Digit in H+P
 sealed abstract class Finger[V, A] {
   def foldMap[B](f: A => B)(implicit m: Semigroup[B]): B
 
@@ -677,10 +678,12 @@ sealed abstract class FingerTree[V, A](implicit measurer: Reducer[A, V]) {
   */
 }
 
+/* HH
 class FingerTreeIntPlus[A](val value: FingerTree[Int, A]) {
   // A placeholder for a FingerTree specialized to the (Int, +) monoid
   // Will need to see how much it helps performance
 }
+*/
 
 object FingerTree {
 /* HH
@@ -808,9 +811,11 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
       pr.toTree,
       (mm, a) => deep(mappendVal(pr.measure, m), pr, mm, a.toDigit))
 
+/* HH
   implicit def ft2ftip[A](ft: FingerTree[Int, A]): FingerTreeIntPlus[A] = new FingerTreeIntPlus(ft)
 
   implicit def ftip2ft[A](ft: FingerTreeIntPlus[A]): FingerTree[Int, A] = ft.value
+*/
 
    /* HH : removed ropes */
 
@@ -882,23 +887,31 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
   }
 */
 
-   trait Ordered[A] {
+   ///////////////////////////////////////////////////////
+   // the following has been added by Hanns Holger Rutz //
+   ///////////////////////////////////////////////////////
+
+   // --------------------- Ordered --------------------- 
+
+   sealed trait Ordered[ @specialized A ] {
       import Ordered._
-      
-      val value: FingerTree[Option[A], A]
-      implicit val ord: Ordering[A]
-//      def partition(a: A) = (ordSeq[A](_)).product.apply(value.split(_ gte some(a)))
-//      def insert(a: A) = partition(a) match {
-//        case (l, r) => ordSeq(l <++> (a +: r))
-//      }
-      def partition( a: A ) : (Ordered[A], Ordered[A]) = {
-         val (l, r) = value.split( _.map( b => ord.compare( b, a ) >= 0 ).getOrElse( false ))
+
+      private type FT = FingerTree[ Option[ A ], A ]
+
+      val value: FT
+      implicit val ord: Ordering[ A ]
+
+      private def partition0( a: A ) : (FT, FT) =
+         value.split( _.map( ord.gteq( _, a )).getOrElse( false ))
+
+      def partition( a: A ) : (Ordered[ A ], Ordered[ A ]) = {
+         val (l, r) = partition0( a )
          (ordSeq( l ), ordSeq( r ))
       }
 
-      def insert(a: A) : Ordered[A] = {
-         val (l, r) = partition( a )
-         ordSeq( l.value <++> (a +: r.value) )
+      def +(a: A) : Ordered[A] = {
+         val (l, r) = partition0( a )
+         ordSeq( l <++> (a +: r) )
       }
 //      def ++(xs: Ordered[A]) = xs.toList.foldLeft(this)(_ insert _)
 
@@ -911,17 +924,81 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
 //           FingerTree[Option[A], Node[Option[A], A]], Finger[Option[A], A]) => B): B = b(ms.monoid.zero)
 //      }
 
-      def apply[ A ]( xs: A* )( implicit ordering: Ordering[ A ]): Ordered[A] = {
-         implicit def keyMonoid[A] = new Monoid[Option[A]] {
-            def append(k1: Option[A], k2: => Option[A]) = k2 orElse k1
-            val zero: Option[A] = None // none
+      def empty[ @specialized A ]( implicit ordering: Ordering[ A ]): Ordered[ A ] = apply()
+
+      def apply[ @specialized A ]( xs: A* )( implicit ordering: Ordering[ A ]): Ordered[ A ] = {
+         implicit def keyMonoid = new Monoid[ Option[ A ]] {
+            def append( k1: Option[ A ], k2: => Option[ A ]) = k2 orElse k1
+            val zero: Option[ A ] = None // none
          }
-         implicit def keyer[A] = Reducer((a: A) => { val res: Option[A] = Some(a); res }) // some(a))
-         xs.foldLeft( ordSeq( empty[ Option[ A ], A ]))( (x, y) => x insert y )
+         implicit def keyer = Reducer( (a: A) => { val res: Option[A] = Some(a); res })
+         xs.foldLeft( ordSeq( FingerTree.empty[ Option[ A ], A ]))( _ + _ )
       }
 
-      private def ordSeq[ A ](t: FingerTree[Option[A], A])( implicit ordering: Ordering[ A ]) = new Ordered[A] {
-        val value = t
-        val ord = ordering // implicitly[Order[A]]
+      private def ordSeq[ A ]( t: FingerTree[ Option[ A ], A ])( implicit ordering: Ordering[ A ]) = new Ordered[ A ] {
+         val value   = t
+         val ord     = ordering
       }
-  }}
+   }
+
+   // --------------------- Ranged ---------------------
+
+   sealed trait Ranged[ @specialized A ] {
+      import Ranged._
+
+      private type I = (A, A)
+      private type FT = FingerTree[ Anno[ A ], I ]
+      val value: FT
+      implicit val ord: Ordering[ A ]
+
+      // "We order the intervals by their low endpoints"
+      private def partition0( i: I ) : (FT, FT) = {
+         val iLo = i._1
+         value.split( _._1.map( ord.gteq( _, iLo )).getOrElse( false ))
+      }
+
+      def +( i: I ) : Ranged[ A ] = {
+         require( ord.lteq( i._1, i._2 ), "Upper interval bound cannot be less than lower bound : " + i )
+         val (l, r) = partition0( i )
+         rangedSeq( l <++> (i +: r) )
+      }
+
+      def findOverlap( i: I ) : Option[ I ] = {
+         value.measure._2 flatMap { tHi =>
+            val (iLo, iHi) = i
+            // if the search interval's low bound is smaller or equal than the tree's total up bound...
+            if( ord.lteq( iLo, tHi )) {
+               // "gives us the interval x with the smallest low endpoint
+               //  whose high endpoint is at least the low endpoint of the query interval"
+               //
+               // Note: n <= MInfty is always false. Since MInfty is equivalent to None
+               //   in our implementation, we can write _.map( ... ).getOrElse( false )
+               //   for this test
+               val (_, x, _) = value.split1( _._2.map( ord.lteq( iLo, _ )).getOrElse( false ), value.measure )
+               // "It then remains to check that low x <= high i"
+               if( ord.lteq( x._1, iHi )) Some( x ) else None
+            } else None
+         }
+      }
+   }
+
+   object Ranged {
+      private type Anno[ A ] = (Option[ A ], Option[ A ])  
+
+      def empty[ @specialized A ]( implicit ordering: Ordering[ A ]): Ranged[ A ] = apply()
+
+      def apply[ @specialized A ]( xs: (A, A)* )( implicit ordering: Ordering[ A ]): Ranged[ A ] = {
+         implicit def keyMonoid = new Monoid[ Option[ A ]] {
+            def append(k1: Option[ A ], k2: => Option[ A ]) = k2 orElse k1
+            val zero: Option[ A ] = None // none
+         }
+         implicit def keyer = Reducer( (a: (A, A)) => { val res: Anno[A] = (Some( a._1 ), Some( a._2 )); res })
+         xs.foldLeft( rangedSeq( FingerTree.empty[ Anno[ A ], (A, A) ]))( _ + _ )
+      }
+
+      private def rangedSeq[ A ](t: FingerTree[ Anno[ A ], (A, A) ])( implicit ordering: Ordering[ A ]) = new Ranged[ A ] {
+         val value   = t
+         val ord     = ordering
+      }
+   }
+}

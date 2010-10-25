@@ -2,7 +2,7 @@ package de.sciss.fingertree
 
 import annotation.tailrec
 
-/* HH sealed */ trait Identity[A] /* HH extends PimpedType[A] */ {
+private[fingertree] trait Identity[ A ] {
 // HH from PimpedType
    val value: A
 

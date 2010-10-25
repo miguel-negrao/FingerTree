@@ -6,7 +6,7 @@ package de.sciss.fingertree
 // of the traits below. For example, the type function mentioned
 // above is expressed as `PartialApply1Of2[Either, Int]#Flip`.
 
-trait PartialApply1Of2[T[_, _], A] {
+private[fingertree] trait PartialApply1Of2[T[_, _], A] {
   type Apply[B] = T[A, B]
 
   type Flip[B] = T[B, A]

@@ -1,6 +1,6 @@
 package de.sciss.fingertree
 
-object Helper extends Reducers /* with Endos */ {
+private[fingertree] object Helper extends Reducers {
    // HH from Zeroes
    def mzero[Z](implicit z: Zero[Z]): Z = z.zero
 

@@ -2,6 +2,6 @@ h2. FingerTree
 
 h3. statement
 
-This is an attempt to extract the FingerTree class from "Scalaz":http://code.google.com/p/scalaz/, while stripping away as much its encumbered Haskell operating system and implicits orgy as possible. It is also an attempt to make a more standard Scala like interface, including ordered sequences and interval trees.
+This is an attempt to extract the FingerTree class from "Scalaz":http://code.google.com/p/scalaz/, while stripping away as much of its encumbered Haskell operating system and implicits orgy as possible. It is also an attempt to make a more standard Scala like interface, including ordered sequences and interval trees.
 
 All modifications by Hanns Holger to the original code published under the same BSD style license as Scalaz. To contact the author, send an email to @contact at sciss.de@

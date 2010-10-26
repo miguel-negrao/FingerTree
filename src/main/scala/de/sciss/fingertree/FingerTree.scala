@@ -6,6 +6,7 @@ import Helper._
 
 import collection.Iterator
 import collection.immutable.StringLike
+import annotation.tailrec
 
 /**
 * Finger Trees provide a base for implementations of various collection types,
@@ -580,6 +581,9 @@ sealed abstract class FingerTree[V, A](implicit measurer: Reducer[A, V]) {
     else
       (this, empty)
 
+   def takeUntil( p: V => Boolean ) : FingerTree[ V, A ] = split( p )._1
+   def dropUntil( p: V => Boolean ) : FingerTree[ V, A ] = split( p )._2
+
   def split1(pred: V => Boolean): (FingerTree[V, A], A, FingerTree[V, A]) = split1(pred, measurer.monoid.zero)
 
   private def split1(pred: V => Boolean, accV: V): (FingerTree[V, A], A, FingerTree[V, A]) = fold(
@@ -855,38 +859,6 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
   }
 */
 
-/* HH
-  // Ordered sequences
-  trait OrdSeqs {
-    sealed trait OrdSeq[A] extends /* HH NewType[ */ FingerTree[Option[A], A] /* HH ] */ {
-/* HH      val value: FingerTree[Option[A], A] */
-// HH
-       value =>
-       
-      implicit val ord: Order[A]
-      def partition(a: A) = (ordSeq[A](_)).product.apply(value.split(_ gte some(a)))
-      def insert(a: A) = partition(a) match {
-        case (l, r) => ordSeq(l <++> (a +: r))
-      }
-      def ++(xs: OrdSeq[A]) = xs.toList.foldLeft(this)(_ insert _)
-    }
-
-    private def ordSeq[A:Order](t: FingerTree[Option[A], A]) = new OrdSeq[A] {
-      val value = t
-      val ord = implicitly[Order[A]]
-    }
-
-    def OrdSeq[A:Order](as: A*): OrdSeq[A] = {
-      implicit def keyMonoid[A] = new Monoid[Option[A]] {
-        def append(k1: Option[A], k2: => Option[A]) = k2 orElse k1
-        val zero: Option[A] = none
-      }
-      implicit def keyer[A] = Reducer((a: A) => some(a))
-      as.foldLeft(ordSeq(empty[Option[A], A]))((x, y) => x insert y)
-    }
-  }
-*/
-
    ///////////////////////////////////////////////////////
    // the following has been added by Hanns Holger Rutz //
    ///////////////////////////////////////////////////////
@@ -901,21 +873,19 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
       val value: FT
       implicit val ord: Ordering[ A ]
 
-      private def partition0( a: A ) : (FT, FT) =
+      private def splitAt0( a: A ) : (FT, FT) =
          value.split( _.map( ord.gteq( _, a )).getOrElse( false ))
 
-      def partition( a: A ) : (Ordered[ A ], Ordered[ A ]) = {
-         val (l, r) = partition0( a )
+      def splitAt( a: A ) : (Ordered[ A ], Ordered[ A ]) = {
+         val (l, r) = splitAt0( a )
          (ordSeq( l ), ordSeq( r ))
       }
 
       def +(a: A) : Ordered[A] = {
-         val (l, r) = partition0( a )
+         val (l, r) = splitAt0( a )
          ordSeq( l <++> (a +: r) )
       }
 //      def ++(xs: Ordered[A]) = xs.toList.foldLeft(this)(_ insert _)
-
-//      private def product(implicit a: Arrow[M]): M[(A, A), (B, B)] = this *** value
    }
 
    object Ordered {
@@ -952,17 +922,23 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
       implicit val ord: Ordering[ A ]
 
       // "We order the intervals by their low endpoints"
-      private def partition0( i: I ) : (FT, FT) = {
+      private def splitAt0( i: I ) : (FT, FT) = {
          val iLo = i._1
          value.split( _._1.map( ord.gteq( _, iLo )).getOrElse( false ))
       }
 
       def +( i: I ) : Ranged[ A ] = {
-         require( ord.lteq( i._1, i._2 ), "Upper interval bound cannot be less than lower bound : " + i )
-         val (l, r) = partition0( i )
+// XXX should have Interval wrapper that does this check
+//         require( ord.lteq( i._1, i._2 ), "Upper interval bound cannot be less than lower bound : " + i )
+         val (l, r) = splitAt0( i )
          rangedSeq( l <++> (i +: r) )
       }
 
+      /* TODO:
+            this should be renamed to findTouching
+            and findOverlap should change the semantics
+            from lteq to lt!
+       */
       def findOverlap( i: I ) : Option[ I ] = {
          value.measure._2 flatMap { tHi =>
             val (iLo, iHi) = i
@@ -974,12 +950,39 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
                // Note: n <= MInfty is always false. Since MInfty is equivalent to None
                //   in our implementation, we can write _.map( ... ).getOrElse( false )
                //   for this test
-               val (_, x, _) = value.split1( _._2.map( ord.lteq( iLo, _ )).getOrElse( false ), value.measure )
+               val (_, x, _) = value.split1( atleast( iLo ) _, value.measure )
                // "It then remains to check that low x <= high i"
                if( ord.lteq( x._1, iHi )) Some( x ) else None
             } else None
          }
       }
+
+      /*
+         TODO:
+
+         should return a Stream probably? at least something lazy
+       */
+      def filterOverlap( i: I ) : List[ I ] = {
+//         matches (takeUntil (greater (high i)) t)
+//         where matches xs = case viewL (dropUntil (atleast (low i)) xs) of
+//            Nil L	→ [ ]
+//            ConsL x xs′ → x : matches xs′
+
+         val (iLo, iHi) = i
+
+         def matches( xs: FT ) : List[ I ] = {
+            val v = xs.dropUntil( atleast( iLo ) _ ).viewl
+            (v.headOption, v.tailOption) match {  // XXX efficient?
+               case (Some( x ), Some( xs0 )) => x :: matches( xs0 )  // XXX tailrec!
+               case _ => Nil
+            }
+         }
+
+         matches( value.takeUntil( greater( iHi ) _ ))
+      }
+
+      @inline private def atleast( k: A )( v: Anno[ A ]) = v._2.map( ord.lteq( k, _ )).getOrElse( false )
+      @inline private def greater( k: A )( v: Anno[ A ]) = v._1.map( ord.gt( _, k )).getOrElse( false )
    }
 
    object Ranged {

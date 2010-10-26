@@ -957,27 +957,37 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
          }
       }
 
-      /*
-         TODO:
+//      /*
+//         TODO:
+//
+//         should return a Stream probably? at least something lazy
+//       */
+//      def filterOverlap( i: I ) : List[ I ] = {
+////         matches (takeUntil (greater (high i)) t)
+////         where matches xs = case viewL (dropUntil (atleast (low i)) xs) of
+////            Nil L	→ [ ]
+////            ConsL x xs′ → x : matches xs′
+//
+//         val (iLo, iHi) = i
+//
+//         def matches( xs: FT ) : List[ I ] = {
+//            val v = xs.dropUntil( atleast( iLo ) _ ).viewl
+////            (v.headOption, v.tailOption) match {  // XXX efficient?
+////               case (Some( x ), Some( xs0 )) => x :: matches( xs0 )  // XXX tailrec!
+////               case _ => Nil
+////            }
+//            v.fold( Nil, (x, xs0) => x :: matches( xs0 ))  // XXX tailrec!
+//         }
+//         matches( value.takeUntil( greater( iHi ) _ ))
+//      }
 
-         should return a Stream probably? at least something lazy
-       */
-      def filterOverlap( i: I ) : List[ I ] = {
-//         matches (takeUntil (greater (high i)) t)
-//         where matches xs = case viewL (dropUntil (atleast (low i)) xs) of
-//            Nil L	→ [ ]
-//            ConsL x xs′ → x : matches xs′
-
+      def filterOverlap( i: I ) : Stream[ I ] = {
          val (iLo, iHi) = i
 
-         def matches( xs: FT ) : List[ I ] = {
+         def matches( xs: FT ) : Stream[ I ] = {
             val v = xs.dropUntil( atleast( iLo ) _ ).viewl
-            (v.headOption, v.tailOption) match {  // XXX efficient?
-               case (Some( x ), Some( xs0 )) => x :: matches( xs0 )  // XXX tailrec!
-               case _ => Nil
-            }
+            v.fold( Stream.empty, (x, xs0) => Stream.cons( x, matches( xs0 )))
          }
-
          matches( value.takeUntil( greater( iHi ) _ ))
       }
 

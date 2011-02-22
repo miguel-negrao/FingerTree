@@ -823,47 +823,45 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
 
    /* HH : removed ropes */
 
-/* HH
-  // Indexed sequences
-  trait IndSeqs {
-    sealed trait IndSeq[A] extends /* HH NewType[ */ FingerTree[Int, A] /* HH ] */ {
-/* HH      val value: FingerTree[Int, A] */
-// HH
-       value =>
-       
-      implicit def sizer[A] = Reducer((a: A) => 1)
-      def apply(i: Int): A =
-        value.split(_ > i)._2.viewl.headOption.getOrElse(error("Index " + i + " > " + value.measure))
-      def ++(xs: IndSeq[A]) = indSeq(value <++> xs /* HH xs.value */)
-      def :+(x: => A) = indSeq(value :+ x)
-      def +:(x: => A) = indSeq(x +: value)
-/* HH      def tail = indSeq(value.tail) */
-/* HH      def init = indSeq(value.init) */
-/* HH      def map[B](f: A => B) = indSeq(value map f) */
-// HH
-      def map[B](f: A => B) : IndSeq[ A ] = indSeq(value map f)
-/* HH
-      def flatMap[B](f: A => IndSeq[B]) =
-        indSeq(value.foldl(empty[Int, B])((ys, x) => ys <++> f(x) /* f(x).value */))
-*/
-    }
-
-    private def indSeq[A](v: FingerTree[Int, A]) = new IndSeq[A] {
-/* HH      val value = v */
-    }
-
-    object IndSeq {
-      def apply[A](as: A*) = fromSeq(as)
-      def fromSeq[A](as: Seq[A]) = indSeq(as.foldLeft(empty[Int, A](Reducer(a => 1)))((x, y) => x :+ y))
-    }
-  }
-*/
-
    ///////////////////////////////////////////////////////
    // the following has been added by Hanns Holger Rutz //
    ///////////////////////////////////////////////////////
 
-   // --------------------- Ordered --------------------- 
+   // --------------------- Indexed ---------------------
+
+   sealed trait Indexed[ @specialized A ] {
+      import Indexed._
+
+      private type FT = FingerTree[ Int, A ]
+
+      val value: FT
+
+//       implicit def sizer[A] = Reducer((a: A) => 1)
+       def apply( i: Int ) : A = value.split( _ > i )._2.viewl.headOption
+          .getOrElse( throw new IndexOutOfBoundsException( i.toString ))
+
+/* HH
+      def ++(xs: IndSeq[A]) = indSeq(value <++> xs /* HH xs.value */)
+      def :+(x: => A) = indSeq(value :+ x)
+      def +:(x: => A) = indSeq(x +: value)
+      def tail = indSeq(value.tail)
+      def init = indSeq(value.init)
+      def map[B](f: A => B) : Indexed[ A ] = indSeq(value map f)
+      def flatMap[B](f: A => IndSeq[B]) =
+        indSeq(value.foldl(empty[Int, B])((ys, x) => ys <++> f(x) /* f(x).value */))
+*/
+   }
+
+   object Indexed {
+      def apply[ A ]( as: A* ) : Indexed[ A ] =
+         indSeq( as.foldLeft( FingerTree.empty[ Int, A ]( Reducer( _ => 1 )))( (x, y) => x :+ y ))
+
+      private def indSeq[ A ]( t: FingerTree[ Int, A ]) = new Indexed[ A ] {
+         val value = t
+      }
+   }
+
+   // --------------------- Ordered ---------------------
 
    sealed trait Ordered[ @specialized A ] {
       import Ordered._

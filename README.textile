@@ -5,3 +5,7 @@ h3. statement
 This is an attempt to extract the FingerTree class from "Scalaz":http://code.google.com/p/scalaz/, while stripping away as much of its encumbered Haskell operating system and implicits orgy as possible. It is also an attempt to make a more standard Scala like interface, including ordered sequences and interval trees.
 
 All modifications by Hanns Holger Rutz to the original code published under the same BSD style license as Scalaz. To contact the author, send an email to @contact at sciss.de@
+
+h3. notes
+
+Currently the FingerTree, used for indexed sequences, is around 20 times slower than Scala's standard Vector class. Main problem I guess is missing specialization, but with Scala 2.8.1 it is impossible to add, as scalac chokes on almost any specialization annotation that you try to add :-(

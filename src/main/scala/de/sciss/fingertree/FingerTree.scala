@@ -836,14 +836,14 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
 
       val value: FT
 
-//       implicit def sizer[A] = Reducer((a: A) => 1)
        def apply( i: Int ) : A = value.split( _ > i )._2.viewl.headOption
           .getOrElse( throw new IndexOutOfBoundsException( i.toString ))
 
+      def ++( xs: Indexed[ A ]) = indSeq( value <++> xs.value )
+      def :+( x: => A ) = indSeq( value :+ x )
+      def +:( x: => A ) = indSeq( x +: value )
+
 /* HH
-      def ++(xs: IndSeq[A]) = indSeq(value <++> xs /* HH xs.value */)
-      def :+(x: => A) = indSeq(value :+ x)
-      def +:(x: => A) = indSeq(x +: value)
       def tail = indSeq(value.tail)
       def init = indSeq(value.init)
       def map[B](f: A => B) : Indexed[ A ] = indSeq(value map f)
@@ -852,6 +852,13 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
 */
 
       def size: Int = value.measure
+
+      private def splitAt0( i: Int ) : (FT, FT) = value.split( _ > i )
+
+      def splitAt( i: Int ) : (Indexed[ A ], Indexed[ A ]) = {
+         val (l, r) = splitAt0( i )
+         (indSeq( l ), indSeq( r ))
+      }
    }
 
    object Indexed {
@@ -876,6 +883,10 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
 
       def apply( i: Int ) : A = value.split( _._1 > i )._2.viewl.headOption
          .getOrElse( throw new IndexOutOfBoundsException( i.toString ))
+
+      def ++( xs: IndexedSummed[ A, B ]) = indSeq( value <++> xs.value )
+      def :+( x: => A ) = indSeq( value :+ x )
+      def +:( x: => A ) = indSeq( x +: value )
 
       def size: Int = value.measure._1
       def sum: B = value.measure._2

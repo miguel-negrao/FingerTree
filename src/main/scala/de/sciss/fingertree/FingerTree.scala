@@ -4,9 +4,9 @@ package de.sciss.fingertree
 // HH
 import Helper._
 
-import collection.Iterator
 import collection.immutable.StringLike
 import annotation.tailrec
+import collection.{IndexedSeqLike, Iterator}
 
 /**
 * Finger Trees provide a base for implementations of various collection types,
@@ -65,7 +65,7 @@ sealed trait /* HH abstract class */ Finger[V, A] {
 
   def map[B, V2](f: A => B)(implicit m: Reducer[B, V2]): Finger[V2, B]
 
-  def foreach(f: A => Unit): Unit
+  def foreach[ U ]( f: A => U ) : Unit
 
   def iterator: Iterator[A]
 
@@ -100,7 +100,7 @@ case class One[V, A](v: V, a1: A)(implicit r: Reducer[A, V]) extends Finger[V, A
 
   def map[B, V2](f: A => B)(implicit r: Reducer[B, V2]) = one(f(a1))
 
-  def foreach(f: A => Unit) {
+  def foreach[ U ]( f: A => U ) {
     f(a1)
   }
 
@@ -137,7 +137,7 @@ case class Two[V, A](v: V, a1: A, a2: A)(implicit r: Reducer[A, V]) extends Fing
 
   def map[B, V2](f: A => B)(implicit r: Reducer[B, V2]) = two(f(a1), f(a2))
 
-  def foreach(f: A => Unit) {
+  def foreach[ U ]( f: A => U ) {
     f(a1)
     f(a2)
   }
@@ -184,7 +184,7 @@ case class Three[V, A](v: V, a1: A, a2: A, a3: A)(implicit r: Reducer[A, V]) ext
 
   def map[B, V2](f: A => B)(implicit r: Reducer[B, V2]) = three(f(a1), f(a2), f(a3))
 
-  def foreach(f: A => Unit) {
+  def foreach[ U ] ( f: A => U ) {
     f(a1)
     f(a2)
     f(a3)
@@ -237,7 +237,7 @@ case class Four[V, A](v: V, a1: A, a2: A, a3: A, a4: A)(implicit r: Reducer[A, V
 
   def map[B, V2](f: A => B)(implicit r: Reducer[B, V2]) = four(f(a1), f(a2), f(a3), f(a4))
 
-  def foreach(f: A => Unit) {
+  def foreach[ U ]( f: A => U ) {
     f(a1)
     f(a2)
     f(a3)
@@ -289,7 +289,7 @@ sealed abstract class Node[V, A](implicit r: Reducer[A, V]) {
     (v, a1, a2) => node2(f(a1), f(a2)),
     (v, a1, a2, a3) => node3(f(a1), f(a2), f(a3)))
 
-  def foreach(f: A => Unit) {
+  def foreach[ U ]( f: A => U ) {
     fold(
       (_, a1, a2) => { f(a1); f(a2) },
       (_, a1, a2, a3) => { f(a1); f(a2); f(a3) }
@@ -634,9 +634,11 @@ sealed abstract class FingerTree[V, A](implicit measurer: Reducer[A, V]) {
           case _ => OnR[({type λ[α]=FingerTree[V, α]})#λ, A](deep(pr, m, sf.rtail), sf.rhead)
         })
 
-  def head = viewl.head
+   def head = viewl.head
+   def headOption = viewl.headOption
 
-  def last = viewr.last
+   def last = viewr.last
+   def lastOption = viewr.lastOption
 
   def tail = viewl.tail
 
@@ -650,7 +652,7 @@ sealed abstract class FingerTree[V, A](implicit measurer: Reducer[A, V]) {
       (v, pr, mt, sf) => deep(pr map f, mt.map(x => x.map(f)), sf map f))
   }
 
-  def foreach(f: A => Unit) {
+  def foreach[ U ]( f: A => U ) {
     fold(
       _ => {},
       (_, x) => { f(x) },
@@ -831,36 +833,68 @@ object FingerTree {
 
    // --------------------- Indexed ---------------------
 
-   sealed trait Indexed[ @specialized A ] {
+   sealed trait Wrapped[ V, A, Repr <: Wrapped[ V, A, Repr ]] {
+      def iterator: Iterator[ A ] = tree.iterator
+      def isEmpty: Boolean = tree.isEmpty
+
+      def head: A = tree.head
+      def headOption: Option[ A ] = tree.headOption
+
+      def last: A = tree.last
+      def lastOption: Option[ A ] = tree.lastOption
+
+      def init: Repr = wrap( tree.init )
+      def tail: Repr = wrap( tree.tail )
+
+      def foreach[ U ]( f: A => U ) : Unit = tree.foreach( f )
+
+      def toList : List[ A ] = tree.toList
+      def toStream : Stream[ A ] = tree.toStream
+
+      protected def tree: FingerTree[ V, A ]
+      protected def wrap( tree: FingerTree[ V, A ]) : Repr
+   }
+
+   sealed trait IndexedLike[ V, A, Repr <: IndexedLike[ V, A, Repr ]] extends Wrapped[ V, A, Repr ] {
+      def ++( xs: Repr ): Repr = wrap( tree <++> xs.tree )
+      def :+( x: => A ): Repr = wrap( tree :+ x )
+      def +:( x: => A ): Repr = wrap( x +: tree )
+
+      override def isEmpty: Boolean = tree.measure == 0
+
+      def apply( i: Int ) : A = splitTreeAt( i )._2.viewl.headOption
+         .getOrElse( throw new IndexOutOfBoundsException( i.toString ))
+
+      def size : Int
+
+      def drop( n: Int ) : Repr = wrap( splitTreeAt( n )._2 )
+      def dropRight( n: Int ) : Repr = wrap( splitTreeAt( size - n )._1 )
+      def slice( from: Int, until: Int ) : Repr = dropRight( size - until ).drop( from ) // XXX most efficient?
+
+      def splitAt( i: Int ) : (Repr, Repr) = {
+         val (l, r) = splitTreeAt( i )
+         (wrap( l ), wrap( r ))
+      }
+
+      def take( n: Int ) : Repr = wrap( splitTreeAt( n )._1 )
+      def takeRight( n: Int ) : Repr = wrap( splitTreeAt( size - n )._2 )
+
+      protected def splitTreeAt( i: Int ) : (FingerTree[ V, A ], FingerTree[ V, A ])
+   }
+
+   sealed trait Indexed[ @specialized A ] extends IndexedLike[ Int, A, Indexed[ A ]] {
       import Indexed._
 
-      private type FT = FingerTree[ Int, A ]
-
-      val value: FT
-
-       def apply( i: Int ) : A = value.split( _ > i )._2.viewl.headOption
-          .getOrElse( throw new IndexOutOfBoundsException( i.toString ))
-
-      def ++( xs: Indexed[ A ]) = indSeq( value <++> xs.value )
-      def :+( x: => A ) = indSeq( value :+ x )
-      def +:( x: => A ) = indSeq( x +: value )
-
 /* HH
-      def tail = indSeq(value.tail)
-      def init = indSeq(value.init)
       def map[B](f: A => B) : Indexed[ A ] = indSeq(value map f)
       def flatMap[B](f: A => IndSeq[B]) =
         indSeq(value.foldl(empty[Int, B])((ys, x) => ys <++> f(x) /* f(x).value */))
 */
 
-      def size: Int = value.measure
+      def size: Int = tree.measure
 
-      private def splitAt0( i: Int ) : (FT, FT) = value.split( _ > i )
-
-      def splitAt( i: Int ) : (Indexed[ A ], Indexed[ A ]) = {
-         val (l, r) = splitAt0( i )
-         (indSeq( l ), indSeq( r ))
-      }
+      protected def splitTreeAt( i: Int ) = tree.split( _ > i )
+      protected def wrap( tree: FingerTree[ Int, A ] ) = indSeq( tree )
    }
 
    object Indexed {
@@ -870,35 +904,20 @@ object FingerTree {
          indSeq( as.foldLeft( FingerTree.empty[ Int, A ]( Reducer( _ => 1 )))( (x, y) => x :+ y ))
 
       private def indSeq[ A ]( t: FingerTree[ Int, A ]) = new Indexed[ A ] {
-         val value = t
+         def tree = t
       }
    }
 
    // --------------------- IndexedSummed ---------------------
 
-   sealed trait IndexedSummed[ @specialized A, @specialized B ] {
+   sealed trait IndexedSummed[ @specialized A, @specialized B ] extends IndexedLike[ (Int, B), A, IndexedSummed[ A, B ]] {
       import IndexedSummed._
 
-      private type FT = FingerTree[ (Int, B), A ]
+      def size: Int = tree.measure._1
+      def sum: B = tree.measure._2
 
-      val value: FT
-
-      def apply( i: Int ) : A = value.split( _._1 > i )._2.viewl.headOption
-         .getOrElse( throw new IndexOutOfBoundsException( i.toString ))
-
-      def ++( xs: IndexedSummed[ A, B ]) = indSeq( value <++> xs.value )
-      def :+( x: => A ) = indSeq( value :+ x )
-      def +:( x: => A ) = indSeq( x +: value )
-
-      def size: Int = value.measure._1
-      def sum: B = value.measure._2
-
-      private def splitAt0( i: Int ) : (FT, FT) = value.split( _._1 > i )
-
-      def splitAt( i: Int ) : (IndexedSummed[ A, B ], IndexedSummed[ A, B ]) = {
-         val (l, r) = splitAt0( i )
-         (indSeq( l ), indSeq( r ))
-      }
+      protected def wrap( tree: FingerTree[ (Int, B), A ]) = indSeq( tree )
+      protected def splitTreeAt( i: Int ) = tree.split( _._1 > i )
    }
 
    object IndexedSummed {
@@ -934,33 +953,32 @@ object FingerTree {
          indSeq( as.foldLeft( FingerTree.empty[ (Int, B), A ]( r ))( (x, y) => x :+ y ))
 
       private def indSeq[ A, B ]( t: FingerTree[ (Int, B), A ]) = new IndexedSummed[ A, B ] {
-         val value = t
+         def tree = t
       }
    }
 
    // --------------------- Ordered ---------------------
 
-   sealed trait Ordered[ @specialized A ] {
+   sealed trait Ordered[ @specialized A ] extends Wrapped[ Option[ A ], A, Ordered[ A ]] {
       import Ordered._
 
-      private type FT = FingerTree[ Option[ A ], A ]
+      implicit def ord: Ordering[ A ]
 
-      val value: FT
-      implicit val ord: Ordering[ A ]
-
-      private def splitAt0( a: A ) : (FT, FT) =
-         value.split( _.map( ord.gteq( _, a )).getOrElse( false ))
+      private def splitTreeAt( a: A ) =
+         tree.split( _.map( ord.gteq( _, a )).getOrElse( false ))
 
       def splitAt( a: A ) : (Ordered[ A ], Ordered[ A ]) = {
-         val (l, r) = splitAt0( a )
-         (ordSeq( l ), ordSeq( r ))
+         val (l, r) = splitTreeAt( a )
+         (wrap( l ), wrap( r ))
       }
 
       def +(a: A) : Ordered[A] = {
-         val (l, r) = splitAt0( a )
-         ordSeq( l <++> (a +: r) )
+         val (l, r) = splitTreeAt( a )
+         wrap( l <++> (a +: r) )
       }
 //      def ++(xs: Ordered[A]) = xs.toList.foldLeft(this)(_ insert _)
+
+      protected def wrap( tree: FingerTree[ Option[ A ], A ]) = ordSeq( tree )
    }
 
    object Ordered {
@@ -981,32 +999,31 @@ object FingerTree {
       }
 
       private def ordSeq[ A ]( t: FingerTree[ Option[ A ], A ])( implicit ordering: Ordering[ A ]) = new Ordered[ A ] {
-         val value   = t
-         val ord     = ordering
+         def tree   = t
+         def ord    = ordering
       }
    }
 
    // --------------------- Ranged ---------------------
 
-   sealed trait Ranged[ @specialized A ] {
+   sealed trait Ranged[ @specialized A ] extends Wrapped[ (Option[ A ], Option[ A ]), (A, A), Ranged[ A ]] {
       import Ranged._
 
       private type I = (A, A)
       private type FT = FingerTree[ Anno[ A ], I ]
-      val value: FT
-      implicit val ord: Ordering[ A ]
+      implicit def ord: Ordering[ A ]
 
       // "We order the intervals by their low endpoints"
-      private def splitAt0( i: I ) : (FT, FT) = {
+      private def splitTreeAt( i: I ) = {
          val iLo = i._1
-         value.split( _._1.map( ord.gteq( _, iLo )).getOrElse( false ))
+         tree.split( _._1.map( ord.gteq( _, iLo )).getOrElse( false ))
       }
 
       def +( i: I ) : Ranged[ A ] = {
 // XXX should have Interval wrapper that does this check
 //         require( ord.lteq( i._1, i._2 ), "Upper interval bound cannot be less than lower bound : " + i )
-         val (l, r) = splitAt0( i )
-         rangedSeq( l <++> (i +: r) )
+         val (l, r) = splitTreeAt( i )
+         wrap( l <++> (i +: r) )
       }
 
       /* TODO:
@@ -1015,7 +1032,7 @@ object FingerTree {
             from lteq to lt!
        */
       def findOverlap( i: I ) : Option[ I ] = {
-         value.measure._2 flatMap { tHi =>
+         tree.measure._2 flatMap { tHi =>
             val (iLo, iHi) = i
             // if the search interval's low bound is smaller or equal than the tree's total up bound...
             if( ord.lteq( iLo, tHi )) {
@@ -1025,7 +1042,7 @@ object FingerTree {
                // Note: n <= MInfty is always false. Since MInfty is equivalent to None
                //   in our implementation, we can write _.map( ... ).getOrElse( false )
                //   for this test
-               val (_, x, _) = value.split1( atleast( iLo ) _, value.measure )
+               val (_, x, _) = tree.split1( atleast( iLo ) _, tree.measure )
                // "It then remains to check that low x <= high i"
                if( ord.lteq( x._1, iHi )) Some( x ) else None
             } else None
@@ -1063,8 +1080,10 @@ object FingerTree {
             val v = xs.dropUntil( atleast( iLo ) _ ).viewl
             v.fold( Stream.empty, (x, xs0) => Stream.cons( x, matches( xs0 )))
          }
-         matches( value.takeUntil( greater( iHi ) _ ))
+         matches( tree.takeUntil( greater( iHi ) _ ))
       }
+
+      protected def wrap( tree: FT ) = rangedSeq( tree )
 
       @inline private def atleast( k: A )( v: Anno[ A ]) = v._2.map( ord.lteq( k, _ )).getOrElse( false )
       @inline private def greater( k: A )( v: Anno[ A ]) = v._1.map( ord.gt( _, k )).getOrElse( false )
@@ -1085,8 +1104,8 @@ object FingerTree {
       }
 
       private def rangedSeq[ A ](t: FingerTree[ Anno[ A ], (A, A) ])( implicit ordering: Ordering[ A ]) = new Ranged[ A ] {
-         val value   = t
-         val ord     = ordering
+         def tree = t
+         def ord  = ordering
       }
    }
 }

@@ -857,8 +857,10 @@ object FingerTree {
 
    sealed trait IndexedLike[ V, A, Repr <: IndexedLike[ V, A, Repr ]] extends Wrapped[ V, A, Repr ] {
       def ++( xs: Repr ): Repr = wrap( tree <++> xs.tree )
-      def :+( x: => A ): Repr = wrap( tree :+ x )
-      def +:( x: => A ): Repr = wrap( x +: tree )
+//      def :+( x: => A ): Repr = wrap( tree :+ x )
+//      def +:( x: => A ): Repr = wrap( x +: tree )
+      def :+( x: A ): Repr = wrap( tree :+ x )
+      def +:( x: A ): Repr = wrap( x +: tree )
 
       override def isEmpty: Boolean = tree.measure == 0
 

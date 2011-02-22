@@ -855,7 +855,9 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
    }
 
    object Indexed {
-      def apply[ A ]( as: A* ) : Indexed[ A ] =
+      def empty[ A ] : Indexed[ A ] = apply()
+
+      def apply[ @specialized A ]( as: A* ) : Indexed[ A ] =
          indSeq( as.foldLeft( FingerTree.empty[ Int, A ]( Reducer( _ => 1 )))( (x, y) => x :+ y ))
 
       private def indSeq[ A ]( t: FingerTree[ Int, A ]) = new Indexed[ A ] {
@@ -865,10 +867,10 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
 
    // --------------------- IndexedSummed ---------------------
 
-   sealed trait IndexedSummed[ @specialized A ] {
+   sealed trait IndexedSummed[ @specialized A, @specialized B ] {
       import IndexedSummed._
 
-      private type FT = FingerTree[ (Int, A), A ]
+      private type FT = FingerTree[ (Int, B), A ]
 
       val value: FT
 
@@ -876,27 +878,49 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
          .getOrElse( throw new IndexOutOfBoundsException( i.toString ))
 
       def size: Int = value.measure._1
-      def sum: A = value.measure._2
+      def sum: B = value.measure._2
 
       private def splitAt0( i: Int ) : (FT, FT) = value.split( _._1 > i )
 
-      def splitAt( i: Int ) : (IndexedSummed[ A ], IndexedSummed[ A ]) = {
+      def splitAt( i: Int ) : (IndexedSummed[ A, B ], IndexedSummed[ A, B ]) = {
          val (l, r) = splitAt0( i )
          (indSeq( l ), indSeq( r ))
       }
    }
 
    object IndexedSummed {
-      def apply[ A ]( as: A* )( implicit num: Numeric[ A ]) : IndexedSummed[ A ] = {
-         implicit val m = new Monoid[ (Int, A) ] {
-            def append( s1: (Int, A), s2: => (Int, A) ) = (s1._1 + s2._1, num.plus( s1._2, s2._2 ))
-            val zero = (0, num.zero)
-         }
-         implicit val r = Reducer( (a: A) => (1, a) )
-         indSeq( as.foldLeft( FingerTree.empty[ (Int, A), A ])( (x, y) => x :+ y ))
+      def empty[ A ]( implicit num: Numeric[ A ]): IndexedSummed[ A, A ] = apply()
+
+      def apply[ @specialized A ]( as: A* )( implicit num: Numeric[ A ]) : IndexedSummed[ A, A ] = {
+         implicit val m = monoid( num )
+         apply( as, Reducer( (a: A) => (1, a) ))
       }
 
-      private def indSeq[ A ]( t: FingerTree[ (Int, A), A ]) = new IndexedSummed[ A ] {
+      def emptyWithView[ A, B ]( implicit num: Numeric[ B ], view: A => B ): IndexedSummed[ A, B ] = applyWithView()
+
+      /**
+       * Constructor which allows an indirection from sequence values to numeric views
+       * which can be summed. This allows for instance to use numeric widening, as the
+       * following example shows (sequence elements are @Int@s, but summing is performed
+       * over @Long@s):
+       * {{{
+       * applyWithView( 2, 3, 5, 8 )( math.Numeric.LongIsIntegral, _.toLong )
+       * }}}
+       */
+      def applyWithView[ @specialized A, @specialized B ]( as: A* )( implicit num: Numeric[ B ], view: A => B ) : IndexedSummed[ A, B ] = {
+         implicit val m = monoid( num )
+         apply( as, Reducer( (a: A) => (1, a: B) ))
+      }
+
+      private def monoid[ X ]( num: Numeric[ X ]) = new Monoid[ (Int, X) ] {
+         def append( s1: (Int, X), s2: => (Int, X) ) = (s1._1 + s2._1, num.plus( s1._2, s2._2 ))
+         val zero = (0, num.zero)
+      }
+
+      private def apply[ @specialized A, @specialized B ]( as: Seq[ A ], r: Reducer[ A, (Int, B) ]) : IndexedSummed[ A, B ] =
+         indSeq( as.foldLeft( FingerTree.empty[ (Int, B), A ]( r ))( (x, y) => x :+ y ))
+
+      private def indSeq[ A, B ]( t: FingerTree[ (Int, B), A ]) = new IndexedSummed[ A, B ] {
          val value = t
       }
    }
@@ -932,14 +956,14 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
 //           FingerTree[Option[A], Node[Option[A], A]], Finger[Option[A], A]) => B): B = b(ms.monoid.zero)
 //      }
 
-      def empty[ @specialized A ]( implicit ordering: Ordering[ A ]): Ordered[ A ] = apply()
+      def empty[ A ]( implicit ordering: Ordering[ A ]): Ordered[ A ] = apply()
 
       def apply[ @specialized A ]( xs: A* )( implicit ordering: Ordering[ A ]): Ordered[ A ] = {
-         implicit def keyMonoid = new Monoid[ Option[ A ]] {
+         implicit val keyMonoid = new Monoid[ Option[ A ]] {
             def append( k1: Option[ A ], k2: => Option[ A ]) = k2 orElse k1
             val zero: Option[ A ] = None // none
          }
-         implicit def keyer = Reducer( (a: A) => { val res: Option[A] = Some(a); res })
+         implicit val keyer = Reducer( (a: A) => { val res: Option[A] = Some(a); res })
          xs.foldLeft( ordSeq( FingerTree.empty[ Option[ A ], A ]))( _ + _ )
       }
 
@@ -1036,14 +1060,14 @@ def single[V, A](a: => A)(implicit ms: Reducer[A, V]): FingerTree[V, A] = single
    object Ranged {
       private type Anno[ A ] = (Option[ A ], Option[ A ])  
 
-      def empty[ @specialized A ]( implicit ordering: Ordering[ A ]): Ranged[ A ] = apply()
+      def empty[ A ]( implicit ordering: Ordering[ A ]): Ranged[ A ] = apply()
 
       def apply[ @specialized A ]( xs: (A, A)* )( implicit ordering: Ordering[ A ]): Ranged[ A ] = {
-         implicit def keyMonoid = new Monoid[ Option[ A ]] {
+         implicit val keyMonoid = new Monoid[ Option[ A ]] {
             def append(k1: Option[ A ], k2: => Option[ A ]) = k2 orElse k1
             val zero: Option[ A ] = None // none
          }
-         implicit def keyer = Reducer( (a: (A, A)) => { val res: Anno[A] = (Some( a._1 ), Some( a._2 )); res })
+         implicit val keyer = Reducer( (a: (A, A)) => { val res: Anno[A] = (Some( a._1 ), Some( a._2 )); res })
          xs.foldLeft( rangedSeq( FingerTree.empty[ Anno[ A ], (A, A) ]))( _ + _ )
       }
 

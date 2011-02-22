@@ -881,6 +881,12 @@ object FingerTree {
       def take( n: Int ) : Repr = wrap( splitTreeAt( n )._1 )
       def takeRight( n: Int ) : Repr = wrap( splitTreeAt( size - n )._2 )
 
+      def updated( index: Int, elem: A ) : Repr = {
+         if( index < 0 || index >= size ) throw new IndexOutOfBoundsException( index.toString )
+         val (l, r) = splitTreeAt( index )
+         wrap( l.:+( elem ).<++>( r.tail ))  // XXX most efficient?
+      }
+
       protected def splitTreeAt( i: Int ) : (FingerTree[ V, A ], FingerTree[ V, A ])
    }
 

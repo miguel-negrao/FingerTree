@@ -15,7 +15,7 @@ import Helper._
  *
  * Based on a Haskell library by Edward Kmett
  **/
-abstract class Reducer[C, M](implicit mm: Monoid[M]) {
+abstract class Reducer[@specialized C, @specialized M](implicit mm: Monoid[M]) {
 import Helper._
   val monoid = mm
   def unit(c: C): M = snoc(mzero, c)
@@ -36,10 +36,10 @@ import Helper._
 private[fingertree] trait Reducers {
 /* HH  import Scalaz._ */
 
-  implicit def ReducerMonoid[C, M](r: Reducer[C, M]) = r.monoid
+  implicit def ReducerMonoid[@specialized C, @specialized M](r: Reducer[C, M]) = r.monoid
 
   /** Construct a Reducer with the given unit function and monoid **/
-  def Reducer[C, M: Monoid](unit: C => M) = {
+  def Reducer[@specialized C, M: Monoid](unit: C => M) = {
     val u = unit
     new Reducer[C, M] {
       override def unit(c: C) = u(c)
@@ -48,17 +48,17 @@ private[fingertree] trait Reducers {
 
   def Reducer[M: Monoid]: Reducer[M, M] = Reducer(x => x)
 
-   def ListReducer[C] = new Reducer[C, List[C]] {
+   def ListReducer[@specialized C] = new Reducer[C, List[C]] {
      override def unit(c: C) = List(c)
      override def cons(c: C, cs: List[C]) = c :: cs
    }
 
-   def StreamReducer[C] = new Reducer[C, Stream[C]] {
+   def StreamReducer[@specialized C] = new Reducer[C, Stream[C]] {
        override def unit(c: C) = Stream(c)
        override def cons(c: C, cs: Stream[C]) = c #:: cs
     }
 
-  def UnitReducer[C]: Reducer[C, Unit] = Reducer((c: C) => ())
+  def UnitReducer[@specialized C]: Reducer[C, Unit] = Reducer((c: C) => ())
 
   def AnyReducer: Reducer[Boolean, Boolean] = Reducer(x => x)
 /* HH

@@ -10,10 +10,10 @@ package de.sciss.fingertree
  * <li><strong>right identity</strong><br/><code>forall a. append(a, zero) == a</code></li>
  * </p>
  */
-trait Monoid[M] extends Zero[M] with Semigroup[M]
+trait Monoid[@specialized M] extends Zero[M] with Semigroup[M]
 
 private[fingertree] abstract class MonoidLow {
-  implicit def monoid[M](implicit s: Semigroup[M], z: Zero[M]): Monoid[M] = new Monoid[M] {
+  implicit def monoid[@specialized M](implicit s: Semigroup[M], z: Zero[M]): Monoid[M] = new Monoid[M] {
     def append(s1: M, s2: => M) = s append (s1, s2)
 
     val zero = z.zero

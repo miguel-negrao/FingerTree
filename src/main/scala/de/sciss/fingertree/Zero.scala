@@ -8,7 +8,7 @@ import collection.generic.CanBuildFrom
  * <p/>
  * ∀ a in S, append(a, zero) = a
  */
-trait Zero[Z] {
+trait Zero[@specialized Z] {
   val zero: Z
 }
 
@@ -122,7 +122,7 @@ object Zero {
 
   implicit def EitherLeftZero[A, B](implicit bz: Zero[B]): Zero[Either.LeftProjection[A, B]] = zero(Right(∅[B]).left)
 */
-  implicit def Tuple2Zero[A, B](implicit az: Zero[A], bz: Zero[B]): Zero[(A, B)] =
+  implicit def Tuple2Zero[@specialized A, @specialized B](implicit az: Zero[A], bz: Zero[B]): Zero[(A, B)] =
     zero((az.zero, bz.zero))
 /* HH
   implicit def Tuple3Zero[A, B, C](implicit az: Zero[A], bz: Zero[B], cz: Zero[C]): Zero[(A, B, C)] =

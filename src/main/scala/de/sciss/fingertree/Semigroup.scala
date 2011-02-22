@@ -12,7 +12,7 @@ package de.sciss.fingertree
  * </ol>
  * @see scalaz.Identity#⊹
  */
-trait Semigroup[S] {
+trait Semigroup[@specialized S] {
   def append(s1: S, s2: => S): S
 }
 
@@ -117,7 +117,7 @@ object Semigroup extends SemigroupLow {
 
   implicit def EitherRightSemigroup[A, B]: Semigroup[Either.RightProjection[B, A]] = semigroup((a, b) => if (a.e.isRight) a else b)
 */
-  implicit def Tuple2Semigroup[A, B](implicit as: Semigroup[A], bs: Semigroup[B]): Semigroup[(A, B)] =
+  implicit def Tuple2Semigroup[@specialized A, @specialized B](implicit as: Semigroup[A], bs: Semigroup[B]): Semigroup[(A, B)] =
     semigroup((a, b) => (a._1 |+| b._1, a._2 |+| b._2))
 /* HH
   implicit def Tuple3Semigroup[A, B, C](implicit as: Semigroup[A], bs: Semigroup[B], cs: Semigroup[C]): Semigroup[(A, B, C)] =

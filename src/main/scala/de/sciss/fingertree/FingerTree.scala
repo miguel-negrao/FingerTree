@@ -836,6 +836,7 @@ object FingerTree {
    sealed trait Wrapped[ V, A, Repr <: Wrapped[ V, A, Repr ]] {
       def iterator: Iterator[ A ] = tree.iterator
       def isEmpty: Boolean = tree.isEmpty
+      def nonEmpty: Boolean = !isEmpty
 
       def head: A = tree.head
       def headOption: Option[ A ] = tree.headOption

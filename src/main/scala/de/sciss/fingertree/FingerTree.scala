@@ -863,7 +863,7 @@ object FingerTree {
       def :+( x: A ): Repr = wrap( tree :+ x )
       def +:( x: A ): Repr = wrap( x +: tree )
 
-      override def isEmpty: Boolean = tree.measure == 0
+      override def isEmpty: Boolean = size == 0
 
       def apply( idx: Int ) : A = {
          if( idx < 0 || idx >= size ) throw new IndexOutOfBoundsException( idx.toString )

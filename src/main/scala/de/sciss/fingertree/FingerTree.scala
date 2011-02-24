@@ -864,8 +864,11 @@ object FingerTree {
 
       override def isEmpty: Boolean = tree.measure == 0
 
-      def apply( i: Int ) : A = splitTreeAt( i )._2.viewl.headOption
-         .getOrElse( throw new IndexOutOfBoundsException( i.toString ))
+      def apply( idx: Int ) : A = {
+         if( idx < 0 || idx >= size ) throw new IndexOutOfBoundsException( idx.toString )
+         val (_, x, _) = splitTree1( idx )
+         x
+      }
 
       def size : Int
 
@@ -883,11 +886,12 @@ object FingerTree {
 
       def updated( index: Int, elem: A ) : Repr = {
          if( index < 0 || index >= size ) throw new IndexOutOfBoundsException( index.toString )
-         val (l, r) = splitTreeAt( index )
-         wrap( l.:+( elem ).<++>( r.tail ))  // XXX most efficient?
+         val (l, _, r) = splitTree1( index )
+         wrap( l.:+( elem ).<++>( r ))  // XXX most efficient?
       }
 
       protected def splitTreeAt( i: Int ) : (FingerTree[ V, A ], FingerTree[ V, A ])
+      protected def splitTree1( i: Int ) : (FingerTree[ V, A ], A, FingerTree[ V, A ])
    }
 
    sealed trait Indexed[ @specialized A ] extends IndexedLike[ Int, A, Indexed[ A ]] {
@@ -902,6 +906,7 @@ object FingerTree {
       def size: Int = tree.measure
 
       protected def splitTreeAt( i: Int ) = tree.split( _ > i )
+      protected def splitTree1( i: Int ) = tree.split1( _ > i )
       protected def wrap( tree: FingerTree[ Int, A ] ) = indSeq( tree )
    }
 
@@ -926,6 +931,7 @@ object FingerTree {
 
       protected def wrap( tree: FingerTree[ (Int, B), A ]) = indSeq( tree )
       protected def splitTreeAt( i: Int ) = tree.split( _._1 > i )
+      protected def splitTree1( i: Int ) = tree.split1( _._1 > i )
    }
 
    object IndexedSummed {

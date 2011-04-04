@@ -675,7 +675,18 @@ sealed abstract class FingerTree[V, A](implicit measurer: Reducer[A, V]) {
   def toStream: Stream[A] = map(x => x)(StreamReducer[A]).measure
   def toList: List[A] = toStream.toList
 
-  import FingerTree._
+   override def toString = toString( "FingerTree", this )
+
+   protected def toString( id: String, obj: AnyRef ) : String = if( TOSTRING_RESOLVE ) {
+      id + toList.mkString( "(", " ,", ")" )
+   } else {
+//      val s = obj.super.toString()
+////      val i = s.lastIndexOf( '.' ) + 1
+////      s.substring( i )
+//      val i = s.indexOf( '@' )
+//      if( i >= 0 ) id + s.substring( i ) else id
+      id + "@" + java.lang.Integer.toHexString( obj.hashCode )
+   }
 
    /* HH
   override def toString = {
@@ -694,6 +705,12 @@ class FingerTreeIntPlus[A](val value: FingerTree[Int, A]) {
 */
 
 object FingerTree {
+   /**
+    * Whether `toString` should resolve the tree by calling `toList` or not.
+    * For lazy behavior keep this to the default (`false`).
+    */
+   var TOSTRING_RESOLVE = false
+
 /* HH
   implicit def FingerTreeShow[V: Show, A: Show]: Show[FingerTree[V,A]] = shows((t: FingerTree[V,A]) => t.fold(
     empty = v => v + " []",
@@ -919,6 +936,8 @@ object FingerTree {
 
       private def indSeq[ A ]( t: FingerTree[ Int, A ]) = new Indexed[ A ] {
          def tree = t
+
+         override def toString = t.toString( "FingerTree.Indexed", this )
       }
    }
 
@@ -969,6 +988,8 @@ object FingerTree {
 
       private def indSeq[ A, B ]( t: FingerTree[ (Int, B), A ]) = new IndexedSummed[ A, B ] {
          def tree = t
+
+         override def toString = t.toString( "FingerTree.IndexedSummed", this )
       }
    }
 
@@ -1016,6 +1037,8 @@ object FingerTree {
       private def ordSeq[ A ]( t: FingerTree[ Option[ A ], A ])( implicit ordering: Ordering[ A ]) = new Ordered[ A ] {
          def tree   = t
          def ord    = ordering
+
+         override def toString = t.toString( "FingerTree.Ordered", this )
       }
    }
 
@@ -1121,6 +1144,8 @@ object FingerTree {
       private def rangedSeq[ A ](t: FingerTree[ Anno[ A ], (A, A) ])( implicit ordering: Ordering[ A ]) = new Ranged[ A ] {
          def tree = t
          def ord  = ordering
+
+         override def toString = t.toString( "FingerTree.Ranged", this )
       }
    }
 }

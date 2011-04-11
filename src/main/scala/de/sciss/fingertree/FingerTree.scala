@@ -678,7 +678,7 @@ sealed abstract class FingerTree[V, A](implicit measurer: Reducer[A, V]) {
    override def toString = toString( "FingerTree", this )
 
    protected def toString( id: String, obj: AnyRef ) : String = if( TOSTRING_RESOLVE ) {
-      id + toList.mkString( "(", " ,", ")" )
+      id + toList.mkString( "(", ", ", ")" )
    } else {
 //      val s = obj.super.toString()
 ////      val i = s.lastIndexOf( '.' ) + 1

@@ -1,8 +1,5 @@
 package de.sciss.fingertree
 
-// HH
-import Helper._
-
 /**
  * A Reducer[C,M] is a Monoid[M] that maps
  * values of type C through `unit` to values of type M. A C-Reducer may also

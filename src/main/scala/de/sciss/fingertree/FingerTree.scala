@@ -4,9 +4,8 @@ package de.sciss.fingertree
 // HH
 import Helper._
 
-import collection.immutable.StringLike
-import annotation.tailrec
-import collection.{IndexedSeqLike, Iterator}
+//import collection.{IndexedSeqLike, Iterator}
+import sys.error
 
 /**
 * Finger Trees provide a base for implementations of various collection types,
@@ -620,7 +619,7 @@ sealed abstract class FingerTree[V, A](implicit measurer: Reducer[A, V]) {
       (v, x) => OnL[({type λ[α]=FingerTree[V, α]})#λ, A](x, empty[V, A]),
       (v, pr, m, sf) =>
         pr match {
-          case One(v, x) => OnL[({type λ[α]=FingerTree[V, α]})#λ, A](x, rotL(m, sf))
+          case One(_v, x) => OnL[({type λ[α]=FingerTree[V, α]})#λ, A](x, rotL(m, sf))
           case _ => OnL[({type λ[α]=FingerTree[V, α]})#λ, A](pr.lhead, deep(pr.ltail, m, sf))
         })
 
@@ -630,7 +629,7 @@ sealed abstract class FingerTree[V, A](implicit measurer: Reducer[A, V]) {
       (v, x) => OnR[({type λ[α]=FingerTree[V, α]})#λ, A](empty[V, A], x),
       (v, pr, m, sf) =>
         sf match {
-          case One(v, x) => OnR[({type λ[α]=FingerTree[V, α]})#λ, A](rotR(pr, m), x)
+          case One(_v, x) => OnR[({type λ[α]=FingerTree[V, α]})#λ, A](rotR(pr, m), x)
           case _ => OnR[({type λ[α]=FingerTree[V, α]})#λ, A](deep(pr, m, sf.rtail), sf.rhead)
         })
 
@@ -864,7 +863,7 @@ object FingerTree {
       def init: Repr = wrap( tree.init )
       def tail: Repr = wrap( tree.tail )
 
-      def foreach[ U ]( f: A => U ) : Unit = tree.foreach( f )
+      def foreach[ U ]( f: A => U ) { tree.foreach( f )}
 
       def toList : List[ A ] = tree.toList
       def toStream : Stream[ A ] = tree.toStream

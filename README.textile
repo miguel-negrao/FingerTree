@@ -10,7 +10,11 @@ fn1. Hinze, R. and Paterson, R., Finger trees: a simple general-purpose data str
 
 h3. notes
 
-Currently the FingerTree, used for indexed sequences, is around 20 times slower than Scala's standard Vector class. Main problem I guess is missing specialization, but with Scala 2.8.1 it is impossible to add, as scalac chokes on almost any specialization annotation that you try to add :-(
+Currently the FingerTree, used for indexed sequences, is around 20 times slower than Scala's standard Vector class. Main problem I guess is missing specialization...
+
+h3. building
+
+This builds with Scala 2.9.1 and xsbt (sbt 0.11).
 
 h3. todo
 

@@ -90,7 +90,7 @@ object Zero {
   implicit def BigIntMutliplicationZero: Zero[BigIntMultiplication] = zero(BigInt(1) ∏)
 */
   implicit def TraversableZero[CC <: Traversable[_]](implicit cbf: CanBuildFrom[Nothing, Nothing, CC]): Zero[CC] =
-    zero(cbf.apply.result)
+    zero(cbf.apply().result())
 /* HH
   // Not implicit to ensure implicitly[Zero[NodeSeq]].zero === NodeSeqZero.zero
   def NodeZero: Zero[Node] = new Zero[Node] {

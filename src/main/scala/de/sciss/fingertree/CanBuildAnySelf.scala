@@ -1,8 +1,8 @@
 package de.sciss.fingertree
 
-import collection._
-import collection.generic._
 import scala.collection.mutable.Builder
+import collection.generic.CanBuildFrom
+
 //import Scalaz._
 
 private[fingertree] trait CanBuildAnySelf[CC[_]] {
@@ -10,7 +10,7 @@ private[fingertree] trait CanBuildAnySelf[CC[_]] {
 
   def builder[A, B]: CanBuildSelf[CC, A, B]
 
-  final def apply[A, B](): Builder[B, CC[B]] = builder[A, B].apply
+  final def apply[A, B](): Builder[B, CC[B]] = builder[A, B].apply()
 
   final def apply[A, B](f: CC[A]): Builder[B, CC[B]] = builder[A, B].apply(f)
 }

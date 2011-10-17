@@ -1,7 +1,5 @@
 package de.sciss.fingertree
 
-import annotation.tailrec
-
 private[fingertree] trait Identity[ @specialized A ] {
 // HH from PimpedType
    val value: A

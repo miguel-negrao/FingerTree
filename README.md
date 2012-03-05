@@ -2,19 +2,17 @@
 
 ### statement
 
-This provides a data structure called FingerTree[^1] for the Scala programming language. The code was basically extracted from the FingerTree class from [Scalaz](http://code.google.com/p/scalaz/), stripping away as much of the encumbered Scalaz as possible, so that it becomes a halfway self contained project. It is also an attempt to make a more standard Scala like interface, including ordered sequences and interval trees.
+FingerTree is an immutable sequence data structure in Scala programming language, offering O(1) prepend and append, as well as a range of other useful properties [^1]. Finger trees can be used as building blocks for queues, double-ended queues, priority queues, indexed and summed sequences.
 
-All modifications by Hanns Holger Rutz to the original code published under the same BSD style license as Scalaz. To contact the author, send an email to `contact at sciss.de`.
+FingerTree is (C)opyright 2011&ndash;2012 by Hanns Holger Rutz. All rights reserved. It is released under the [GNU General Public License](https://raw.github.com/Sciss/FingerTree/master/licenses/FingerTree-License.txt) and comes with absolutely no warranties. To contact the author, send an email to `contact at sciss.de`
+
+The current implementation is a rewrite of previous versions. It tries to combine the advantages of the finger tree found in Scalaz (mainly the ability to have reducers / measures) and of the finger tree implementation by Daniel Spiewak (small, self-contained, much simpler and faster), but also has a more idiomatic Scala interface and comes with a range of useful applications, such as indexed and summed sequences.
 
 [^1] Hinze, R. and Paterson, R., Finger trees: a simple general-purpose data structure, Journal of Functional Programming, vol. 16 no. 2 (2006), pp. 197--217
 
-### notes
-
-Currently the FingerTree, used for indexed sequences, is around 20 times slower than Scala's standard Vector class. Main problem I guess is missing specialization...
-
 ### building
 
-This builds with Scala 2.9.1 and sbt 0.11.2.
+This builds with Scala 2.9.1 and sbt 0.11.2. Standard targets are `compile`, `package`, `doc`, `console`, `test`, `publish-local`.
 
 ### creating an IntelliJ IDEA project
 
@@ -28,11 +26,3 @@ Then to create the IDEA project, run the following two commands from the xsbt sh
 
     > set ideaProjectName := "FingerTree"
     > gen-idea
-
-### remarks
-
-Daniel Spiewak has an alternative implementation, which we have forked at [github.com/Sciss/scala-collections](https://github.com/Sciss/scala-collections), and we are currently benchmarking both implementations.
-
-Spiewak's implementation [CC] is far more slim (and probably less complete) than Scalaz' [Z], so it comes at no surprise that it is faster in the preliminary tests: Constructing a tree by successive prepending for N = 50000 takes 13 ms in [CC] versus 288 ms in [Z]. For N = 100000, [CC] takes 22 ms versus stack overflow in [Z].
-
-So the plan is to add the stuff we need (which is the measure to construct ordered, indexed, and summed sequences) to [CC] and give up the [Z] path.

@@ -29,13 +29,12 @@ object IndexedSeq {
    private implicit val measure = Measure.Indexed
 
    def empty[ A ] : IndexedSeq[ A ] = new Impl[ A ]( FingerTree.empty[ Int, A ])
+   def apply[ A ]( elems: A* ) : IndexedSeq[ A ] = new Impl[ A ]( FingerTree.apply[ Int, A ]( elems: _* ))
 
    private final class Impl[ A ]( protected val tree: FingerTree[ Int, A ]) extends IndexedSeq[ A ] {
       protected def m : Measure[ A, Int ] = measure
       protected def wrap( tree: FingerTree[ Int, A ]) : IndexedSeq[ A ] = new Impl( tree )
-      protected def splitTreeAt( i: Int ) = tree.split(  _ > i )
-      protected def splitTree1(  i: Int ) = tree.split1( _ > i )
-      protected def apply1( i: Int )      = tree.find1(  _ > i )
+      protected def indexPred( i: Int ) = _ > i
 
       def size : Int = tree.measure
 

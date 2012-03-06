@@ -30,6 +30,12 @@ package de.sciss.fingertree
  */
 object FingerTree {
    def empty[ V, A ]( implicit m: Measure[ A, V ]) : FingerTree[ V, A ] = new Empty[ V ]( m.zero )
+   def apply[ V, A ]( elems: A* )( implicit m: Measure[ A, V ]) : FingerTree[ V, A ] = {
+      // TODO make this more efficient
+      var res = empty[ V, A ]
+      elems.foreach( res :+= _ )
+      res
+   }
 
    implicit private def digitMeasure[ V, A ]( implicit m: Measure[ A, V ]) : Measure[ Digit[ V, A ], V ] = new DigitMeasure( m )
 
@@ -191,14 +197,12 @@ object FingerTree {
             (this, empty[ V, A ])
          }
 
-//      def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = split1( pred, m.zero )
-
       private def deepLeft( pr: MaybeDigit[ V, A ], tr: FingerTree[ V, Digit[ V, A ]], sf: Digit[ V, A ])
-                                  ( implicit m: Measure[ A, V ]) : Tree = {
+                          ( implicit m: Measure[ A, V ]) : Tree = {
          if( pr.isEmpty ) {
             tr.viewLeft match {
-               case ViewLeftCons( a, tr1 ) => Deep( m |+| (a.measure, tr1.measure, sf.measure), a, tr1, sf )
-               case _                      => sf.toTree
+               case ViewLeftCons( a, tr1 )   => Deep( m |+| (a.measure, tr1.measure, sf.measure), a, tr1, sf )
+               case _                        => sf.toTree
             }
          } else {
             val prd = pr.get
@@ -207,17 +211,16 @@ object FingerTree {
       }
 
       private def deepRight( pr: Digit[ V, A ], tr: FingerTree[ V, Digit[ V, A ]], sf: MaybeDigit[ V, A ])
-                                  ( implicit m: Measure[ A, V ]) : Tree = {
-//         if( pr.isEmpty ) {
-//            tr.viewLeft match {
-//               case ViewLeftCons( a, tr1 ) => Deep( m |+| (a.measure, tr1.measure, sf.measure), a, tr1, sf )
-//               case _                      => sf.toTree
-//            }
-//         } else {
-//            val prd = pr.get
-//            Deep( m |+| (prd.measure, tr.measure, sf.measure), prd, tr, sf )
-//         }
-         sys.error( "TODO" )
+                           ( implicit m: Measure[ A, V ]) : Tree = {
+         if( sf.isEmpty ) {
+            tr.viewRight match {
+               case ViewRightCons( tr1, a )  => Deep( m |+| (pr.measure, tr1.measure, a.measure), pr, tr1, a )
+               case _                        => pr.toTree
+            }
+         } else {
+            val sfd = sf.get
+            Deep( m |+| (pr.measure, tr.measure, sfd.measure), pr, tr, sfd )
+         }
       }
 
       def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = split1( pred, m.zero )

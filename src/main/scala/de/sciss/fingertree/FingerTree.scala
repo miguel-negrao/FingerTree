@@ -109,7 +109,7 @@ object FingerTree {
       def lastOption : Option[ A ] = Some( suffix.last )
 
       def tail( implicit m: Measure[ A, V ]) : Tree = viewLeft.tail
-      def init( implicit m: Measure[ A, V ]) : Tree = viewRight.tail
+      def init( implicit m: Measure[ A, V ]) : Tree = viewRight.init
 
       def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : FingerTree[ V, A1 ] = {
          val vb   = m( b )
@@ -278,15 +278,15 @@ object FingerTree {
    }
 
    sealed trait ViewRight[ V, +A ] {
-      def tail : FingerTree[ V, A ]
-      def head : A
+      def init : FingerTree[ V, A ]
+      def last : A
    }
 
-   final case class ViewConsRight[ V, A ]( tail: FingerTree[ V, A ], head: A ) extends ViewRight[ V, A ]
+   final case class ViewConsRight[ V, A ]( init: FingerTree[ V, A ], last: A ) extends ViewRight[ V, A ]
 
    final case class ViewNilRight[ V ]() extends ViewRight[ V, Nothing ] {
-      def tail : FingerTree[ V, Nothing ] = throw new NoSuchElementException( "tail of empty view" )
-      def head : Nothing                  = throw new NoSuchElementException( "head of empty view" )
+      def init : FingerTree[ V, Nothing ] = throw new NoSuchElementException( "init of empty view" )
+      def last : Nothing                  = throw new NoSuchElementException( "last of empty view" )
    }
 
    // ---- Digits ----

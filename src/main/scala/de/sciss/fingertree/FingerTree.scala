@@ -86,6 +86,11 @@ object FingerTree {
          (e, a, e)
       }
 
+      private[fingertree] def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = {
+         val e = empty[ V, A ]
+         (e, a, e)
+      }
+
       def find1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : A = a
 
       private[fingertree] def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (V, A) = (init, a)
@@ -186,57 +191,54 @@ object FingerTree {
             (this, empty[ V, A ])
          }
 
-      def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = split1( pred, m.zero )
+//      def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = split1( pred, m.zero )
 
       private def deepLeft( pr: MaybeDigit[ V, A ], tr: FingerTree[ V, Digit[ V, A ]], sf: Digit[ V, A ])
-                          ( implicit m: Measure[ A, V ]) : Tree = {
+                                  ( implicit m: Measure[ A, V ]) : Tree = {
          if( pr.isEmpty ) {
             tr.viewLeft match {
                case ViewLeftCons( a, tr1 ) => Deep( m |+| (a.measure, tr1.measure, sf.measure), a, tr1, sf )
                case _                      => sf.toTree
             }
          } else {
-            val prd = pr.toDigit
+            val prd = pr.get
             Deep( m |+| (prd.measure, tr.measure, sf.measure), prd, tr, sf )
          }
       }
 
-      private def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = {
-         val vPrefix = m |+| (init, prefix.measure)
-         if( pred( vPrefix )) {  // found in prefix
-            val (l, x, r) = prefix.split1( pred, init )
-            (l.toTree, x, deepLeft( r, tree, suffix ))
-         } else {
-//            val vTree = m |+| (vPrefix, tree.measure)
-//            if( pred( vTree )) { // found in middle
-//               val (vTreeLeft, xs) = tree.find1( pred, vPrefix )
-//               (vTreeLeft, xs.find1( pred, vTreeLeft ))
-//            } else {             // in suffix
-//               (vTree, suffix.find1( pred, vTree ))
+      private def deepRight( pr: Digit[ V, A ], tr: FingerTree[ V, Digit[ V, A ]], sf: MaybeDigit[ V, A ])
+                                  ( implicit m: Measure[ A, V ]) : Tree = {
+//         if( pr.isEmpty ) {
+//            tr.viewLeft match {
+//               case ViewLeftCons( a, tr1 ) => Deep( m |+| (a.measure, tr1.measure, sf.measure), a, tr1, sf )
+//               case _                      => sf.toTree
 //            }
-            sys.error( "TODO" )
-         }
+//         } else {
+//            val prd = pr.get
+//            Deep( m |+| (prd.measure, tr.measure, sf.measure), prd, tr, sf )
+//         }
+         sys.error( "TODO" )
       }
 
-//        (v, pr, m, sf) => {
-//          val accVpr = accV snoc pr
-//          if (pred(accVpr)) {
-//            val (l, x, r) = pr.split1(pred, accV)
-//            (l.map( _.toTree ).getOrElse( empty ), x, deepL(r, m, sf))
-//          }
-//          else {
-//            val accVm = mappendVal(accVpr, m)
-//            if (pred(accVm)) {
-//              val (ml, xs, mr) = m.split1(pred, accVpr)
-//              val (l, x, r) = xs.split1(pred, mappendVal(accVpr, ml))
-//              (deepR(pr, ml, l), x, deepL(r, mr, sf))
-//            }
-//            else {
-//              val (l, x, r) = sf.split1(pred, accVm)
-//              (deepR(pr, m, l), x, r.map( _.toTree ).getOrElse( empty ))
-//            }
-//          }
-//        }
+      def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = split1( pred, m.zero )
+
+      private[fingertree] def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = {
+         val vPrefix = m |+| (init, prefix.measure)
+         if( pred( vPrefix )) {  // found in prefix
+            val (l, x, r)        = prefix.split1( pred, init )
+            (l.toTree, x, deepLeft( r, tree, suffix ))
+         } else {
+            val vTree = m |+| (vPrefix, tree.measure)
+            if( pred( vTree )) { // found in middle
+               val (ml, xs, mr)  = tree.split1( pred, vPrefix )
+               val (l, x, r)     = xs.split1( pred, m |+| (vPrefix, ml.measure) )
+               (deepRight( prefix, ml, l ), x, deepLeft( r, mr, suffix ))
+            } else {             // in suffix
+               val (l, x, r)     = suffix.split1( pred, vTree )
+               (deepRight( prefix, tree, l), x, r.toTree)
+            }
+         }
+      }
 
       def find1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : A = find1( pred, m.zero )._2
 
@@ -287,6 +289,9 @@ object FingerTree {
       def split1( pred: V => Boolean )( implicit m: Measure[ Nothing, V ]) : (Tree, Nothing, Tree) =
          throw new UnsupportedOperationException( "split1 on empty finger tree" )
 
+      private[fingertree] def split1( pred: V => Boolean, init: V )( implicit m: Measure[ Nothing, V ]) : (Tree, Nothing, Tree) =
+         throw new UnsupportedOperationException( "split1 on empty finger tree" )
+
       def find1( pred: V => Boolean )( implicit m: Measure[ Nothing, V ]) : Nothing =
          throw new UnsupportedOperationException( "find1 on empty finger tree" )
 
@@ -330,13 +335,13 @@ object FingerTree {
 
       def isEmpty : Boolean
       def toTree( implicit m: Measure[ A, V ]) : Tree
-      def toDigit : Digit[ V, A ]
+      def get : Digit[ V, A ]
    }
 
    private final case class Zero[ V ]() extends MaybeDigit[ V, Nothing ] {
       def isEmpty = true
       def toTree( implicit m: Measure[ Nothing, V ]) : Tree = empty[ V, Nothing ]
-      def toDigit = throw new UnsupportedOperationException( "toDigit" )
+      def get = throw new UnsupportedOperationException( "get" )
    }
 
    private sealed trait Digit[ V, +A ] extends MaybeDigit[ V, A ] {
@@ -376,7 +381,7 @@ object FingerTree {
 
    final private case class One[ V, A ]( measure: V, a1: A ) extends Digit[ V, A ] {
       def isEmpty = false
-      def toDigit : Digit[ V, A ] = this
+      def get : Digit[ V, A ] = this
 
       def head  = a1
       def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] = throw new UnsupportedOperationException( "tail of digit one" )
@@ -405,7 +410,7 @@ object FingerTree {
 
    final private case class Two[ V, A ]( measure: V, a1: A, a2: A ) extends Digit[ V, A ] {
       def isEmpty = false
-      def toDigit : Digit[ V, A ] = this
+      def get : Digit[ V, A ] = this
 
       def head  = a1
       def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] = One( m( a2 ), a2 )
@@ -443,7 +448,7 @@ object FingerTree {
 
    final private case class Three[ V, A ]( measure: V, a1: A, a2: A, a3: A ) extends Digit[ V, A ] {
       def isEmpty = false
-      def toDigit : Digit[ V, A ] = this
+      def get : Digit[ V, A ] = this
 
       def head  = a1
       def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] = Two( m |+| (m( a2 ), m( a3 )), a2, a3 )
@@ -488,7 +493,7 @@ object FingerTree {
 
    final private case class Four[ V, A ]( measure: V, a1: A, a2: A, a3: A, a4: A ) extends Digit[ V, A ] {
       def isEmpty = false
-      def toDigit : Digit[ V, A ] = this
+      def get : Digit[ V, A ] = this
 
       def head  = a1
       def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] =
@@ -669,6 +674,8 @@ sealed trait FingerTree[ V, +A ] {
     * @return  the split tree, as a `Tuple3` with the left tree, the discerning element, and the right tree
     */
    def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (Tree, A, Tree)
+
+   private[fingertree] def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (Tree, A, Tree)
 
    /**
     * Traverses the tree until a predicate on an element becomes `true`, and then returns that

@@ -85,16 +85,9 @@ object FingerTree {
       }
 
 
-      def iterator : Iterator[ A ] = new Iterator[ A ] {
-         var hasNext = true
-
-         def next = {
-            hasNext = false
-            a
-         }
-      }
-
       def toList : List[ A ] = a :: Nil
+
+      def iterator : Iterator[ A ] = Iterator.single( a )
 
       override def toString = "(" + a + ")"
    }
@@ -186,9 +179,9 @@ object FingerTree {
       def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (FingerTree[ V, A ], A, FingerTree[ V, A ]) =
          sys.error( "TODO" )
 
-      def iterator : Iterator[ A ] = prefix.iterator ++ (tree.iterator flatMap { _.toList.iterator }) ++ suffix.iterator
-
       def toList : List[ A ] = iterator.toList
+
+      def iterator : Iterator[ A ] = prefix.iterator ++ (tree.iterator flatMap { _.toList.iterator }) ++ suffix.iterator
 
       override def toString = "(" + prefix + ", " + tree + ", " + suffix + ")"
    }
@@ -217,13 +210,9 @@ object FingerTree {
       def split1( pred: V => Boolean )( implicit m: Measure[ Nothing, V ]) : (FingerTree[ V, Nothing ], Nothing, FingerTree[ V, Nothing ]) =
          throw new UnsupportedOperationException( "split on empty finger tree" )
 
-      def iterator : Iterator[ Nothing ] = new Iterator[ Nothing ] {
-         val hasNext = false
-
-         def next = throw new NoSuchElementException
-      }
-
       def toList : List[ Nothing ] = Nil
+
+      def iterator : Iterator[ Nothing ] = Iterator.empty
 
       override def toString = "()"
    }
@@ -289,14 +278,7 @@ object FingerTree {
 
       def toList : List[ A ] = a1 :: Nil
 
-      def iterator : Iterator[ A ] = new Iterator[ A ] {
-         var hasNext = true
-
-         def next = {
-            hasNext = false
-            a1
-         }
-      }
+      def iterator : Iterator[ A ] = Iterator.single( a1 )
 
       override def toString = "(" + a1 + ")"
    }

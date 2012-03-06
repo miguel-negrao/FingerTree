@@ -188,9 +188,10 @@ object FingerTree {
 
       def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = split1( pred, m.zero )
 
-      private def deepLeft( l: Tree, m: FingerTree[ V, Digit[ V, A ]], r: Digit[ V, A ]) : Tree = {
-//         m.viewLeft math {
-//            case ViewLeftCons
+      private def deepLeft( l: MaybeDigit[ V, A ], m: FingerTree[ V, Digit[ V, A ]], r: Digit[ V, A ]) : Tree = {
+//         m.viewLeft match {
+//            case ViewLeftCons( head, tail ) =>
+//            case _ => r.toTree
 //         }
          sys.error( "TODO" )
       }
@@ -199,7 +200,7 @@ object FingerTree {
          val vPrefix = m |+| (init, prefix.measure)
          if( pred( vPrefix )) {  // found in prefix
             val (l, x, r) = prefix.split1( pred, init )
-            (l, x, deepLeft( r, tree, suffix ))
+            (l.toTree, x, deepLeft( r, tree, suffix ))
          } else {
 //            val vTree = m |+| (vPrefix, tree.measure)
 //            if( pred( vTree )) { // found in middle
@@ -306,7 +307,8 @@ object FingerTree {
       def last : A
    }
 
-   final case class ViewLeftCons[ V, A ]( head: A, tail: FingerTree[ V, A ]) extends ViewLeft[ V, A ]
+   final case class ViewLeftCons[  V, A ]( head: A, tail: FingerTree[ V, A ])  extends ViewLeft[  V, A ]
+   final case class ViewRightCons[ V, A ]( init: FingerTree[ V, A ], last: A ) extends ViewRight[ V, A ]
 
    final case class ViewNil[ V ]() extends ViewLeft[ V, Nothing ] with ViewRight[ V, Nothing ] {
       private def notSupported( what: String ) = throw new NoSuchElementException( what + " of empty view" )
@@ -316,12 +318,23 @@ object FingerTree {
       def last : Nothing                  = notSupported( "last" )
    }
 
-   final case class ViewRightCons[ V, A ]( init: FingerTree[ V, A ], last: A ) extends ViewRight[ V, A ]
-
    // ---- Digits ----
 
-   private sealed trait Digit[ V, +A ] {
+   private sealed trait MaybeDigit[ V, +A ] {
       protected type Tree = FingerTree[ V, A ]
+
+      def isEmpty : Boolean
+      def toTree( implicit m: Measure[ A, V ]) : Tree
+      def toDigit : Digit[ V, A ]
+   }
+
+   private final case class Zero[ V ]() extends MaybeDigit[ V, Nothing ] {
+      def isEmpty = true
+      def toTree( implicit m: Measure[ Nothing, V ]) : Tree = empty[ V, Nothing ]
+      def toDigit = throw new UnsupportedOperationException( "toDigit" )
+   }
+
+   private sealed trait Digit[ V, +A ] extends MaybeDigit[ V, A ] {
 
       /**
        * It is an open question whether caching the measurements of digits is preferable or not. As Hinze and
@@ -347,9 +360,9 @@ object FingerTree {
       def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ]
 
       def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : A
-      def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (Tree, A, Tree)
+      def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (MaybeDigit[ V, A ], A, MaybeDigit[ V, A ])
 
-      def toTree( implicit m: Measure[ A, V ]) : Tree
+//      def toTree( implicit m: Measure[ A, V ]) : Tree
 
       def toList : List[ A ]
 
@@ -357,6 +370,9 @@ object FingerTree {
    }
 
    final private case class One[ V, A ]( measure: V, a1: A ) extends Digit[ V, A ] {
+      def isEmpty = false
+      def toDigit : Digit[ V, A ] = this
+
       def head  = a1
       def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] = throw new UnsupportedOperationException( "tail of digit one" )
 
@@ -368,8 +384,8 @@ object FingerTree {
 
       def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : A = a1
 
-      def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = {
-         val e = empty[ V, A ]
+      def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (MaybeDigit[ V, A ], A, MaybeDigit[ V, A ]) = {
+         val e = Zero[ V ]()
          (e, a1, e)
       }
 
@@ -383,6 +399,9 @@ object FingerTree {
    }
 
    final private case class Two[ V, A ]( measure: V, a1: A, a2: A ) extends Digit[ V, A ] {
+      def isEmpty = false
+      def toDigit : Digit[ V, A ] = this
+
       def head  = a1
       def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] = One( m( a2 ), a2 )
 
@@ -395,14 +414,14 @@ object FingerTree {
       def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : A =
          if( pred( m |+| (init, m( a1 )))) a1 else a2
 
-      def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = {
+      def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (MaybeDigit[ V, A ], A, MaybeDigit[ V, A ]) = {
          val va1  = m( a1 )
          val v1   = m |+| (init, va1)
-         val e    = empty[ V, A ]
+         val e    = Zero[ V ]()
          if( pred( v1 )) {
-            (e, a1, Single( m( a2 ), a2 ))   // (), a1, (a2)
+            (e, a1, One( m( a2 ), a2 ))   // (), a1, (a2)
          } else {
-            (Single( va1, a1 ), a2, e)       // (a1), a2, ()
+            (One( va1, a1 ), a2, e)       // (a1), a2, ()
          }
       }
 
@@ -418,6 +437,9 @@ object FingerTree {
    }
 
    final private case class Three[ V, A ]( measure: V, a1: A, a2: A, a3: A ) extends Digit[ V, A ] {
+      def isEmpty = false
+      def toDigit : Digit[ V, A ] = this
+
       def head  = a1
       def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] = Two( m |+| (m( a2 ), m( a3 )), a2, a3 )
 
@@ -435,17 +457,16 @@ object FingerTree {
          if( pred( v1 )) a1 else if( pred( m |+| (v1, m( a2 )))) a2 else a3
       }
 
-      def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = {
+      def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (MaybeDigit[ V, A ], A, MaybeDigit[ V, A ]) = {
          val va1  = m( a1 )
          val va2  = m( a2 )
          val v1   = m |+| (init, va1)
-         if( pred( v1 )) {                      // (), a1, ((a2), (), (a3))
-            val va3 = m( a3 )
-            (empty[ V, A ], a1, Deep( m |+| (va2, va3), One( va2, a2 ), empty[ V, Digit[ V, A ]], One( va3, a3 )))
+         if( pred( v1 )) {                      // (), a1, (a2, a3)
+            (Zero[ V ](), a1, Two( m |+| (va2, m( a3 )), a2, a3 ))
          } else if( pred( m |+| (v1, va2) )) {  // (a1), a2, (a3)
-            (Single( va1, a1 ), a2, Single( m( a3 ), a3 ))
-         } else {                               // ((a1), (), (a2)), a3, ()
-            (Deep( m |+| (va1, va2), One( va1, a1 ), empty[ V, Digit[ V, A ]], One( va2, a2 )), a3, empty[ V, A ])
+            (One( va1, a1 ), a2, One( m( a3 ), a3 ))
+         } else {                               // (a1, a2), a3, ()
+            (Two( m |+| (va1, va2), a1, a2 ), a3, Zero[ V ]())
          }
       }
 
@@ -461,6 +482,9 @@ object FingerTree {
    }
 
    final private case class Four[ V, A ]( measure: V, a1: A, a2: A, a3: A, a4: A ) extends Digit[ V, A ] {
+      def isEmpty = false
+      def toDigit : Digit[ V, A ] = this
+
       def head  = a1
       def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] =
          Three( m |+| (m( a2 ), m( a3 ), m( a4 )), a2, a3, a4 )
@@ -483,33 +507,31 @@ object FingerTree {
          }
       }
 
-      def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = {
+      def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (MaybeDigit[ V, A ], A, MaybeDigit[ V, A ]) = {
          val va1  = m( a1 )
          val va2  = m( a2 )
          val v1   = m |+| (init, va1)
-         if( pred( v1 )) {                      // (), a1, ((a2), (), (a3, a4)) -- balance it to the right, as a successive +: is more likely
-            val va34 = m |+| (m( a3 ), m( a4 ))
-            (empty[ V, A ],
+         if( pred( v1 )) {                      // (), a1, (a2, a3, a4)
+            (Zero[ V ](),
              a1,
-             Deep( m |+| (va2, va34), One( va2, a2 ), empty[ V, Digit[ V, A ]], Two( va34, a3, a4 )))
+             Three( m |+| (va2, m( a3 ), m( a4 )), a2, a3, a4 ))
          } else {
             val v12 = m |+| (v1, va2)
             val va3 = m( a3 )
-            if( pred( v12 )) {                  // (a1), a2, ((a3), (), (a4))
-               val va4 = m( a4 )
-               (Single( va1, a1 ),
+            if( pred( v12 )) {                  // (a1), a2, (a3, a4)
+               (One( va1, a1 ),
                 a2,
-                Deep( m |+| (va3, va4), One( va3, a3 ), empty[ V, Digit[ V, A ]], One( va4, a4 )))
+                Two( m |+| (va3, m( a4 )), a3, a4 ))
             } else {
                val va12 = m |+| (va1, va2)
-               if( pred( m |+| (v12, va3) )) {  // ((a1), (), (a2)), a3, (a4)
-                  (Deep( va12, One( va1, a1 ), empty[ V, Digit[ V, A ]], One( va2, a2 )),
+               if( pred( m |+| (v12, va3) )) {  // (a1, a2), a3, (a4)
+                  (Two( va12, a1, a2 ),
                    a3,
-                   Single( m( a4 ), a4 ))
-               } else {                         // ((a1, a2), (), (a3)), a4, () -- balance it to the left, as a successive :+ is more likely
-                  (Deep( m |+| (va12, va3), Two( va12, a1, a2 ), empty[ V, Digit[ V, A ]], One( va3, a3 )),
+                   One( m( a4 ), a4 ))
+               } else {                         // (a1, a2, a3), a4, ()
+                  (Three( m |+| (va12, va3), a1, a2, a3 ),
                    a4,
-                   empty[ V, A ])
+                   Zero[ V ]())
                }
             }
          }

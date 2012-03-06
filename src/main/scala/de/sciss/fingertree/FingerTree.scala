@@ -376,8 +376,10 @@ object FingerTree {
          }
       }
 
-      // TODO: optimise (we can create the Deep structure right away)
-      def toTree( implicit m: Measure[ A, V ]) : Tree = a1 +: Single( m( a2 ), a2 )
+      def toTree( implicit m: Measure[ A, V ]) : Tree = {
+         Deep( measure, One( m( a1 ), a1 ), empty[ V, Digit[ V, A ]], One( m( a2 ), a2 ))
+//         a1 +: Single( m( a2 ), a2 )
+      }
 
       def toList : List[ A ] = a1 :: a2 :: Nil
 
@@ -418,8 +420,10 @@ object FingerTree {
          }
       }
 
-      // TODO: optimise (we can create the Deep structure right away)
-      def toTree( implicit m: Measure[ A, V ]) : Tree = a1 +: a2 +: Single( m( a3 ), a3 )
+      def toTree( implicit m: Measure[ A, V ]) : Tree = {
+         Deep( measure, Two( m|+| (m( a1 ), m( a2 )), a1, a2 ), empty[ V, Digit[ V, A ]], One( m( a3 ), a3 ))
+//         a1 +: a2 +: Single( m( a3 ), a3 )
+      }
 
       def toList : List[ A ] = a1 :: a2 :: a3 :: Nil
 
@@ -483,8 +487,10 @@ object FingerTree {
          }
       }
 
-      // TODO: optimise (we can create the Deep structure right away)
-      def toTree( implicit m: Measure[ A, V ]) : Tree = a1 +: a2 +: a3 +: Single( m( a4 ), a4 )
+      def toTree( implicit m: Measure[ A, V ]) : Tree = {
+         Deep( measure, Two( m|+| (m( a1 ), m( a2 )), a1, a2 ), empty[ V, Digit[ V, A ]], Two( m |+| (m( a3 ), m( a4 )), a3, a4 ))
+//         a1 +: a2 +: a3 +: Single( m( a4 ), a4 )
+      }
 
       def toList : List[ A ] = a1 :: a2 :: a3 :: a4 :: Nil
 

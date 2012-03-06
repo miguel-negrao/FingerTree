@@ -24,6 +24,12 @@ The core element for new structures is to provide an instance of `Measure` which
 
 Future versions will provide more ready-made structures, such as ordered sequences and interval sequences. In the meantime, you can check out the previous Scalaz based version of this project at git tag `Scalaz`, which includes those structures.
 
+### todo
+
+ - concatenation of trees
+ - efficient bulk loading
+ - the iterator looks broken (non-lazy)
+
 ### creating an IntelliJ IDEA project
 
 To develop the sources of FingerTree in IntelliJ IDEA, if you haven't globally installed the sbt-idea plugin yet, create the following contents in `~/.sbt/plugins/build.sbt`:

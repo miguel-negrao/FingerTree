@@ -31,13 +31,14 @@ package de.sciss.fingertree
 object FingerTree {
    def empty[ V, A ]( implicit m: Measure[ A, V ]) : FingerTree[ V, A ] = new Empty[ V ]( m.zero )
 
-   implicit private def nodeMeasure[ V, A ]( implicit m: Measure[ A, V ]) : Measure[ Digit[ V, A ], V ] =
-      new Measure[ Digit[ V, A ], V ] {
-         def zero : V = m.zero
-         def |+|( a: V, b: V ) : V = m |+| (a, b)
-         def |+|( a: V, b: V, c: V ) : V = m |+| (a, b, c)
-         def apply( n: Digit[ V, A ]) : V = n.measure
-      }
+   implicit private def digitMeasure[ V, A ]( implicit m: Measure[ A, V ]) : Measure[ Digit[ V, A ], V ] = new DigitMeasure( m )
+
+   private final class DigitMeasure[ V, A ]( m: Measure[ A, V ]) extends Measure[ Digit[ V, A ], V ] {
+      def zero : V = m.zero
+      def apply( n: Digit[ V, A ]) : V = n.measure
+      def |+|( a: V, b: V ) : V = m |+| (a, b)
+      def |+|( a: V, b: V, c: V ) : V = m |+| (a, b, c)
+   }
 
    // ---- Trees ----
 
@@ -378,7 +379,6 @@ object FingerTree {
 
       def toTree( implicit m: Measure[ A, V ]) : Tree = {
          Deep( measure, One( m( a1 ), a1 ), empty[ V, Digit[ V, A ]], One( m( a2 ), a2 ))
-//         a1 +: Single( m( a2 ), a2 )
       }
 
       def toList : List[ A ] = a1 :: a2 :: Nil
@@ -422,7 +422,6 @@ object FingerTree {
 
       def toTree( implicit m: Measure[ A, V ]) : Tree = {
          Deep( measure, Two( m|+| (m( a1 ), m( a2 )), a1, a2 ), empty[ V, Digit[ V, A ]], One( m( a3 ), a3 ))
-//         a1 +: a2 +: Single( m( a3 ), a3 )
       }
 
       def toList : List[ A ] = a1 :: a2 :: a3 :: Nil
@@ -489,7 +488,6 @@ object FingerTree {
 
       def toTree( implicit m: Measure[ A, V ]) : Tree = {
          Deep( measure, Two( m|+| (m( a1 ), m( a2 )), a1, a2 ), empty[ V, Digit[ V, A ]], Two( m |+| (m( a3 ), m( a4 )), a3, a4 ))
-//         a1 +: a2 +: a3 +: Single( m( a4 ), a4 )
       }
 
       def toList : List[ A ] = a1 :: a2 :: a3 :: a4 :: Nil

@@ -69,8 +69,8 @@ object FingerTree {
          Deep( m |+| (vPrefix, vSuffix), prefix, empty[ V, Digit[ V, A1 ]], suffix )
       }
 
-      def viewLeft(  implicit m: Measure[ A, V ]) : ViewLeft[  V, A ] = ViewConsLeft[  V, A ]( a, empty[ V, A ])
-      def viewRight( implicit m: Measure[ A, V ]) : ViewRight[ V, A ] = ViewConsRight[ V, A ]( empty[ V, A ], a )
+      def viewLeft(  implicit m: Measure[ A, V ]) : ViewLeft[  V, A ] = ViewLeftCons[  V, A ]( a, empty[ V, A ])
+      def viewRight( implicit m: Measure[ A, V ]) : ViewRight[ V, A ] = ViewRightCons[ V, A ]( empty[ V, A ], a )
 
       def split( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (Tree, Tree) = {
          val e = empty[ V, A ]
@@ -143,7 +143,7 @@ object FingerTree {
       def viewLeft( implicit m: Measure[ A, V ]) : ViewLeft[ V, A ] = {
          def deep( prefix: Digit[ V, A ], tree: FingerTree[ V, Digit[ V, A ]], suffix: Digit[ V, A ]) : Tree = prefix match {
             case One( _, _ ) => tree.viewLeft match {
-               case ViewConsLeft( a, newTree ) =>
+               case ViewLeftCons( a, newTree ) =>
                   val vNew = m |+| (a.measure, newTree.measure, suffix.measure)
                   Deep( vNew, a, newTree, suffix )
                case _ =>
@@ -156,13 +156,13 @@ object FingerTree {
                Deep( vNew, prefixNew, tree, suffix )
          }
 
-         ViewConsLeft( prefix.head, deep( prefix, tree, suffix ))
+         ViewLeftCons( prefix.head, deep( prefix, tree, suffix ))
       }
 
       def viewRight( implicit m: Measure[ A, V ]) : ViewRight[ V, A ] = {
          def deep( prefix: Digit[ V, A ], tree: FingerTree[ V, Digit[ V, A ]], suffix: Digit[ V, A ]) : Tree = suffix match {
             case One( _, _ ) => tree.viewRight match {
-               case ViewConsRight( newTree, a ) =>
+               case ViewRightCons( newTree, a ) =>
                   val vNew = m |+| (prefix.measure, newTree.measure, a.measure)
                   Deep( vNew, prefix, newTree, a )
                case _ =>
@@ -175,23 +175,32 @@ object FingerTree {
                Deep( vNew, prefix, tree, suffixNew )
          }
 
-         ViewConsRight( deep( prefix, tree, suffix.init ), suffix.last )
+         ViewRightCons( deep( prefix, tree, suffix.init ), suffix.last )
       }
 
       def split( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (Tree, Tree) =
-         if( pred( measure )) {
-            val (left, elem, right) = split1( pred )
+         if( pred( measure )) {  // predicate turns true inside the tree
+            val (left, elem, right) = split1( pred, m.zero )
             (left, elem +: right)
-         } else {
+         } else {                // split point lies after the last element of this tree
             (this, empty[ V, A ])
          }
 
-      def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = {
+      def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = split1( pred, m.zero )
+
+      private def deepLeft( l: Tree, m: FingerTree[ V, Digit[ V, A ]], r: Digit[ V, A ]) : Tree = {
+//         m.viewLeft math {
+//            case ViewLeftCons
+//         }
          sys.error( "TODO" )
-//         val vPrefix = m |+| (init, prefix.measure)
-//         if( pred( vPrefix )) {  // found in prefix
-//            prefix.split1( pred, init )
-//         } else {
+      }
+
+      private def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = {
+         val vPrefix = m |+| (init, prefix.measure)
+         if( pred( vPrefix )) {  // found in prefix
+            val (l, x, r) = prefix.split1( pred, init )
+            (l, x, deepLeft( r, tree, suffix ))
+         } else {
 //            val vTree = m |+| (vPrefix, tree.measure)
 //            if( pred( vTree )) { // found in middle
 //               val (vTreeLeft, xs) = tree.find1( pred, vPrefix )
@@ -199,8 +208,29 @@ object FingerTree {
 //            } else {             // in suffix
 //               (vTree, suffix.find1( pred, vTree ))
 //            }
-//         }
+            sys.error( "TODO" )
+         }
       }
+
+//        (v, pr, m, sf) => {
+//          val accVpr = accV snoc pr
+//          if (pred(accVpr)) {
+//            val (l, x, r) = pr.split1(pred, accV)
+//            (l.map( _.toTree ).getOrElse( empty ), x, deepL(r, m, sf))
+//          }
+//          else {
+//            val accVm = mappendVal(accVpr, m)
+//            if (pred(accVm)) {
+//              val (ml, xs, mr) = m.split1(pred, accVpr)
+//              val (l, x, r) = xs.split1(pred, mappendVal(accVpr, ml))
+//              (deepR(pr, ml, l), x, deepL(r, mr, sf))
+//            }
+//            else {
+//              val (l, x, r) = sf.split1(pred, accVm)
+//              (deepR(pr, m, l), x, r.map( _.toTree ).getOrElse( empty ))
+//            }
+//          }
+//        }
 
       def find1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : A = find1( pred, m.zero )._2
 
@@ -221,6 +251,7 @@ object FingerTree {
 
       def toList : List[ A ] = iterator.toList
 
+      // TODO XXX this certainly is not lazy. Needs fixing
       def iterator : Iterator[ A ] = prefix.iterator ++ (tree.iterator flatMap { _.toList.iterator }) ++ suffix.iterator
 
       override def toString = "(" + prefix + ", " + tree + ", " + suffix + ")"
@@ -242,8 +273,8 @@ object FingerTree {
       def +:[ A1 ]( a1: A1 )( implicit m: Measure[ A1, V ]) : FingerTree[ V, A1 ] = Single( m( a1 ), a1 )
       def :+[ A1 ]( a1: A1 )( implicit m: Measure[ A1, V ]) : FingerTree[ V, A1 ] = Single( m( a1 ), a1 )
 
-      def viewLeft(  implicit m: Measure[ Nothing, V ]) : ViewLeft[  V, Nothing ] = ViewNilLeft[  V ]()
-      def viewRight( implicit m: Measure[ Nothing, V ]) : ViewRight[ V, Nothing ] = ViewNilRight[ V ]()
+      def viewLeft(  implicit m: Measure[ Nothing, V ]) : ViewLeft[  V, Nothing ] = ViewNil[ V ]()
+      def viewRight( implicit m: Measure[ Nothing, V ]) : ViewRight[ V, Nothing ] = ViewNil[ V ]()
 
       def split( pred: V => Boolean )( implicit m: Measure[ Nothing, V ]) : (Tree, Tree) = (this, this)
 
@@ -270,24 +301,22 @@ object FingerTree {
       def tail : FingerTree[ V, A ]
    }
 
-   final case class ViewConsLeft[ V, A ]( head: A, tail: FingerTree[ V, A ]) extends ViewLeft[ V, A ]
-
-   final case class ViewNilLeft[ V ]() extends ViewLeft[ V, Nothing ] {
-      def head : Nothing                  = throw new NoSuchElementException( "head of empty view" )
-      def tail : FingerTree[ V, Nothing ] = throw new NoSuchElementException( "tail of empty view" )
-   }
-
    sealed trait ViewRight[ V, +A ] {
       def init : FingerTree[ V, A ]
       def last : A
    }
 
-   final case class ViewConsRight[ V, A ]( init: FingerTree[ V, A ], last: A ) extends ViewRight[ V, A ]
+   final case class ViewLeftCons[ V, A ]( head: A, tail: FingerTree[ V, A ]) extends ViewLeft[ V, A ]
 
-   final case class ViewNilRight[ V ]() extends ViewRight[ V, Nothing ] {
-      def init : FingerTree[ V, Nothing ] = throw new NoSuchElementException( "init of empty view" )
-      def last : Nothing                  = throw new NoSuchElementException( "last of empty view" )
+   final case class ViewNil[ V ]() extends ViewLeft[ V, Nothing ] with ViewRight[ V, Nothing ] {
+      private def notSupported( what: String ) = throw new NoSuchElementException( what + " of empty view" )
+      def head : Nothing                  = notSupported( "head" )
+      def tail : FingerTree[ V, Nothing ] = notSupported( "tail" )
+      def init : FingerTree[ V, Nothing ] = notSupported( "init" )
+      def last : Nothing                  = notSupported( "last" )
    }
+
+   final case class ViewRightCons[ V, A ]( init: FingerTree[ V, A ], last: A ) extends ViewRight[ V, A ]
 
    // ---- Digits ----
 

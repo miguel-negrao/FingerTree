@@ -35,6 +35,7 @@ object FingerTree {
       new Measure[ Digit[ V, A ], V ] {
          def zero : V = m.zero
          def |+|( a: V, b: V ) : V = m |+| (a, b)
+         def |+|( a: V, b: V, c: V ) : V = m |+| (a, b, c)
          def apply( n: Digit[ V, A ]) : V = n.measure
       }
 
@@ -115,7 +116,7 @@ object FingerTree {
          prefix match {
             case Four( _, d, e, f, g ) =>
                val prefix     = Two( m |+| (vb, m( d )), b, d )
-               val vTreePefix = m |+| (m |+| (m( e ), m( f )), m( g ))
+               val vTreePefix = m |+| (m( e ), m( f ), m( g ))
                val treeNew    = tree.+:[ Digit[ V, A1 ]]( Three( vTreePefix, e, f, g ))
                Deep( vNew, prefix, treeNew, suffix )
 
@@ -129,7 +130,7 @@ object FingerTree {
          val vNew = m |+| (vb, measure)
          suffix match {
             case Four( _, g, f, e, d ) =>
-               val vTreeSuffix= m |+| (m |+| (m( g ), m( f )), m( e ))
+               val vTreeSuffix= m |+| (m( g ), m( f ), m( e ))
                val treeNew    = tree.:+[ Digit[ V, A1 ]]( Three( vTreeSuffix, g, f, e ))
                val suffix     = Two( m |+| (m( d ), vb), d, b )
                Deep( vNew, prefix, treeNew, suffix )
@@ -142,7 +143,7 @@ object FingerTree {
          def deep( prefix: Digit[ V, A ], tree: FingerTree[ V, Digit[ V, A ]], suffix: Digit[ V, A ]) = prefix match {
             case One( _, _ ) => tree.viewLeft match {
                case ViewConsLeft( a, newTree ) =>
-                  val vNew = m |+| (m |+| (a.measure, newTree.measure), suffix.measure)
+                  val vNew = m |+| (a.measure, newTree.measure, suffix.measure)
                   Deep( vNew, a, newTree, suffix )
                case _ =>
                   suffix.toTree
@@ -150,7 +151,7 @@ object FingerTree {
 
             case _prefix =>
                val prefixNew = _prefix.tail
-               val vNew = m |+| (m |+| (prefixNew.measure, tree.measure), suffix.measure)
+               val vNew = m |+| (prefixNew.measure, tree.measure, suffix.measure)
                Deep( vNew, prefixNew, tree, suffix )
          }
 
@@ -161,7 +162,7 @@ object FingerTree {
          def deep( prefix: Digit[ V, A ], tree: FingerTree[ V, Digit[ V, A ]], suffix: Digit[ V, A ]) = suffix match {
             case One( _, _ ) => tree.viewRight match {
                case ViewConsRight( newTree, a ) =>
-                  val vNew = m |+| (m |+| (prefix.measure, newTree.measure), a.measure)
+                  val vNew = m |+| (prefix.measure, newTree.measure, a.measure)
                   Deep( vNew, prefix, newTree, a )
                case _ =>
                   prefix.toTree
@@ -169,7 +170,7 @@ object FingerTree {
 
             case _suffix =>
                val suffixNew = _suffix.init
-               val vNew = m |+| (m |+| (prefix.measure, tree.measure), suffixNew.measure)
+               val vNew = m |+| (prefix.measure, tree.measure, suffixNew.measure)
                Deep( vNew, prefix, tree, suffixNew )
          }
 
@@ -428,11 +429,11 @@ object FingerTree {
    final private case class Four[ V, A ]( measure: V, a1: A, a2: A, a3: A, a4: A ) extends Digit[ V, A ] {
       def head  = a1
       def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] =
-         Three( m |+| (m |+| (m( a2 ), m( a3 )), m( a4 )), a2, a3, a4 )
+         Three( m |+| (m( a2 ), m( a3 ), m( a4 )), a2, a3, a4 )
 
       def last = a4
       def init( implicit m: Measure[ A, V ]) : Digit[ V, A ] =
-         Three( m |+| (m |+| (m( a1 ), m( a2 )), m( a3 )), a1, a2, a3 )
+         Three( m |+| (m( a1 ), m( a2 ), m( a3 )), a1, a2, a3 )
 
       def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) =
          throw new UnsupportedOperationException( "+: on digit four" )

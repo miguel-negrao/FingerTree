@@ -188,12 +188,17 @@ object FingerTree {
 
       def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = split1( pred, m.zero )
 
-      private def deepLeft( l: MaybeDigit[ V, A ], m: FingerTree[ V, Digit[ V, A ]], r: Digit[ V, A ]) : Tree = {
-//         m.viewLeft match {
-//            case ViewLeftCons( head, tail ) =>
-//            case _ => r.toTree
-//         }
-         sys.error( "TODO" )
+      private def deepLeft( pr: MaybeDigit[ V, A ], tr: FingerTree[ V, Digit[ V, A ]], sf: Digit[ V, A ])
+                          ( implicit m: Measure[ A, V ]) : Tree = {
+         if( pr.isEmpty ) {
+            tr.viewLeft match {
+               case ViewLeftCons( a, tr1 ) => Deep( m |+| (a.measure, tr1.measure, sf.measure), a, tr1, sf )
+               case _                      => sf.toTree
+            }
+         } else {
+            val prd = pr.toDigit
+            Deep( m |+| (prd.measure, tr.measure, sf.measure), prd, tr, sf )
+         }
       }
 
       private def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = {

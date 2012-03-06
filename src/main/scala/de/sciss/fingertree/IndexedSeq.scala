@@ -39,7 +39,7 @@ object IndexedSeq {
 
       def size : Int = tree.measure
 
-      override def toString = tree.iterator.mkString( "IndexedSeq(", ", ", ")" )
+      override def toString = tree.iterator.mkString( "Seq(", ", ", ")" )
    }
 }
 trait IndexedSeq[ A ] extends IndexedSeqLike[ Int, A, IndexedSeq[ A ]]

@@ -31,11 +31,34 @@ object Measure {
       def unit( c: Any ) = 1
       def |+|( a: Int, b: Int ) = a + b
    }
+
+   object SummedIntLong extends Measure[ Int, Long ] {
+      val zero = 0L
+      def unit( c: Int ) = c.toLong
+      def |+|( a: Long, b: Long ) = a + b
+   }
+
+   object IndexedSummedIntLong extends Measure[ Int, (Int, Long) ] {
+      val zero = (0, 0L)
+      def unit( c: Int ) = (1, c.toLong)
+      def |+|( a: (Int, Long), b: (Int, Long) ) = ((a._1 + b._1), (a._2 + b._2))
+   }
+
+   private final class Zip[ C, M, N ]( m1: Measure[ C, M ], m2: Measure[ C, N ])
+   extends Measure[ C, (M, N) ] {
+      def zero = (m1.zero, m2.zero)
+      def unit( c: C ) = (m1.unit( c ), m2.unit( c ))
+      def |+|( a: (M, N), b: (M, N) ) = (m1.|+|( a._1, b._1 ), m2.|+|( a._2, b._2 ))
+   }
 }
 trait Measure[ -C, M ] {
+   import Measure._
+
    def zero: M
    def unit( c: C ) : M
 //   def +:( c: C, m: M ) : M
 //   def :+( m: M, c: C ) : M
    def |+|( a: M, b: M ) : M
+
+   final def zip[ C1 <: C, N ]( m: Measure[ C1, N ]) : Measure[ C1, (M, N) ] = new Zip( this, m )
 }

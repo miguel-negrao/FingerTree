@@ -370,9 +370,9 @@ object FingerTree {
          val v1   = m |+| (init, va1)
          val e    = empty[ V, A ]
          if( pred( v1 )) {
-            (e, a1, Single( m( a2 ), a2 ))
+            (e, a1, Single( m( a2 ), a2 ))   // (), a1, (a2)
          } else {
-            (Single( va1, a1 ), a2, e)
+            (Single( va1, a1 ), a2, e)       // (a1), a2, ()
          }
       }
 
@@ -408,15 +408,13 @@ object FingerTree {
          val va1  = m( a1 )
          val va2  = m( a2 )
          val v1   = m |+| (init, va1)
-         if( pred( v1 )) {
+         if( pred( v1 )) {                      // (), a1, ((a2), (), (a3))
             val va3 = m( a3 )
             (empty[ V, A ], a1, Deep( m |+| (va2, va3), One( va2, a2 ), empty[ V, Digit[ V, A ]], One( va3, a3 )))
-         } else {
-            if( pred( m |+| (v1, va2) )) {
-               (Single( va1, a1 ), a2, Single( m( a3 ), a3 ))
-            } else {
-               (Deep( m |+| (va1, va2), One( va1, a1 ), empty[ V, Digit[ V, A ]], One( va2, a2 )), a3, empty[ V, A ])
-            }
+         } else if( pred( m |+| (v1, va2) )) {  // (a1), a2, (a3)
+            (Single( va1, a1 ), a2, Single( m( a3 ), a3 ))
+         } else {                               // ((a1), (), (a2)), a3, ()
+            (Deep( m |+| (va1, va2), One( va1, a1 ), empty[ V, Digit[ V, A ]], One( va2, a2 )), a3, empty[ V, A ])
          }
       }
 
@@ -454,7 +452,35 @@ object FingerTree {
       }
 
       def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (Tree, A, Tree) = {
-         sys.error( "TODO" )
+         val va1  = m( a1 )
+         val va2  = m( a2 )
+         val v1   = m |+| (init, va1)
+         if( pred( v1 )) {                      // (), a1, ((a2), (), (a3, a4)) -- balance it to the right, as a successive +: is more likely
+            val va34 = m |+| (m( a3 ), m( a4 ))
+            (empty[ V, A ],
+             a1,
+             Deep( m |+| (va2, va34), One( va2, a2 ), empty[ V, Digit[ V, A ]], Two( va34, a3, a4 )))
+         } else {
+            val v12 = m |+| (v1, va2)
+            val va3 = m( a3 )
+            if( pred( v12 )) {                  // (a1), a2, ((a3), (), (a4))
+               val va4 = m( a4 )
+               (Single( va1, a1 ),
+                a2,
+                Deep( m |+| (va3, va4), One( va3, a3 ), empty[ V, Digit[ V, A ]], One( va4, a4 )))
+            } else {
+               val va12 = m |+| (va1, va2)
+               if( pred( m |+| (v12, va3) )) {  // ((a1), (), (a2)), a3, (a4)
+                  (Deep( va12, One( va1, a1 ), empty[ V, Digit[ V, A ]], One( va2, a2 )),
+                   a3,
+                   Single( m( a4 ), a4 ))
+               } else {                         // ((a1, a2), (), (a3)), a4, () -- balance it to the left, as a successive :+ is more likely
+                  (Deep( m |+| (va12, va3), Two( va12, a1, a2 ), empty[ V, Digit[ V, A ]], One( va3, a3 )),
+                   a4,
+                   empty[ V, A ])
+               }
+            }
+         }
       }
 
       // TODO: optimise (we can create the Deep structure right away)

@@ -151,43 +151,11 @@ object FingerTree {
          }
       }
 
-      def viewLeft( implicit m: Measure[ A, V ]) : ViewLeft[ V, A ] = {
-         def deep( prefix: Digit[ V, A ], tree: FingerTree[ V, Digit[ V, A ]], suffix: Digit[ V, A ]) : Tree = prefix match {
-            case One( _, _ ) => tree.viewLeft match {
-               case ViewLeftCons( a, newTree ) =>
-                  val vNew = m |+| (a.measure, newTree.measure, suffix.measure)
-                  Deep( vNew, a, newTree, suffix )
-               case _ =>
-                  suffix.toTree
-            }
+      def viewLeft( implicit m: Measure[ A, V ]) : ViewLeft[ V, A ] =
+         ViewLeftCons( prefix.head, deepLeft( prefix.tail, tree, suffix ))
 
-            case _prefix =>
-               val prefixNew = _prefix.tail
-               val vNew = m |+| (prefixNew.measure, tree.measure, suffix.measure)
-               Deep( vNew, prefixNew, tree, suffix )
-         }
-
-         ViewLeftCons( prefix.head, deep( prefix, tree, suffix ))
-      }
-
-      def viewRight( implicit m: Measure[ A, V ]) : ViewRight[ V, A ] = {
-         def deep( prefix: Digit[ V, A ], tree: FingerTree[ V, Digit[ V, A ]], suffix: Digit[ V, A ]) : Tree = suffix match {
-            case One( _, _ ) => tree.viewRight match {
-               case ViewRightCons( newTree, a ) =>
-                  val vNew = m |+| (prefix.measure, newTree.measure, a.measure)
-                  Deep( vNew, prefix, newTree, a )
-               case _ =>
-                  prefix.toTree
-            }
-
-            case _suffix =>
-               val suffixNew = _suffix.init
-               val vNew = m |+| (prefix.measure, tree.measure, suffixNew.measure)
-               Deep( vNew, prefix, tree, suffixNew )
-         }
-
-         ViewRightCons( deep( prefix, tree, suffix.init ), suffix.last )
-      }
+      def viewRight( implicit m: Measure[ A, V ]) : ViewRight[ V, A ] =
+         ViewRightCons( deepRight( prefix, tree, suffix.init ), suffix.last )
 
       def split( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (Tree, Tree) =
          if( pred( measure )) {  // predicate turns true inside the tree
@@ -364,10 +332,10 @@ object FingerTree {
       def measure: V
 
       def head : A
-      def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ]
+      def tail( implicit m: Measure[ A, V ]) : MaybeDigit[ V, A ]
 
       def last : A
-      def init( implicit m: Measure[ A, V ]) : Digit[ V, A ]
+      def init( implicit m: Measure[ A, V ]) : MaybeDigit[ V, A ]
 
       def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ]
       def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ]
@@ -387,10 +355,10 @@ object FingerTree {
       def get : Digit[ V, A ] = this
 
       def head  = a1
-      def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] = throw new UnsupportedOperationException( "tail of digit one" )
+      def tail( implicit m: Measure[ A, V ]) : MaybeDigit[ V, A ] = Zero[ V ]()
 
       def last = a1
-      def init( implicit m: Measure[ A, V ]) : Digit[ V, A ] = throw new UnsupportedOperationException( "tail of digit one" )
+      def init( implicit m: Measure[ A, V ]) : MaybeDigit[ V, A ] = Zero[ V ]()
 
       def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Two( m |+| (m( b ), measure), b, a1 )
       def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Two( m |+| (measure, m( b )), a1, b )
@@ -416,10 +384,10 @@ object FingerTree {
       def get : Digit[ V, A ] = this
 
       def head  = a1
-      def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] = One( m( a2 ), a2 )
+      def tail( implicit m: Measure[ A, V ]) : MaybeDigit[ V, A ] = One( m( a2 ), a2 )
 
       def last = a2
-      def init( implicit m: Measure[ A, V ]) : Digit[ V, A ] = One( m( a1 ), a1 )
+      def init( implicit m: Measure[ A, V ]) : MaybeDigit[ V, A ] = One( m( a1 ), a1 )
 
       def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Three( m |+| (m( b ), measure), b, a1, a2 )
       def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Three( m |+| (measure, m( b )), a1, a2, b )
@@ -454,10 +422,10 @@ object FingerTree {
       def get : Digit[ V, A ] = this
 
       def head  = a1
-      def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] = Two( m |+| (m( a2 ), m( a3 )), a2, a3 )
+      def tail( implicit m: Measure[ A, V ]) : MaybeDigit[ V, A ] = Two( m |+| (m( a2 ), m( a3 )), a2, a3 )
 
       def last = a3
-      def init( implicit m: Measure[ A, V ]) : Digit[ V, A ] = Two( m |+| (m( a1 ), m( a2 )), a1, a2 )
+      def init( implicit m: Measure[ A, V ]) : MaybeDigit[ V, A ] = Two( m |+| (m( a1 ), m( a2 )), a1, a2 )
 
       def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] =
          Four( m |+| (m( b ), measure), b, a1, a2, a3 )
@@ -499,11 +467,11 @@ object FingerTree {
       def get : Digit[ V, A ] = this
 
       def head  = a1
-      def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] =
+      def tail( implicit m: Measure[ A, V ]) : MaybeDigit[ V, A ] =
          Three( m |+| (m( a2 ), m( a3 ), m( a4 )), a2, a3, a4 )
 
       def last = a4
-      def init( implicit m: Measure[ A, V ]) : Digit[ V, A ] =
+      def init( implicit m: Measure[ A, V ]) : MaybeDigit[ V, A ] =
          Three( m |+| (m( a1 ), m( a2 ), m( a3 )), a1, a2, a3 )
 
       def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) =

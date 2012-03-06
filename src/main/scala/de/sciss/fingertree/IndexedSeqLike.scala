@@ -7,8 +7,9 @@ trait IndexedSeqLike[ V, A, Repr <: IndexedSeqLike[ V, A, Repr ]] extends Finger
 
    final def apply( idx: Int ) : A = {
       if( idx < 0 || idx >= size ) throw new IndexOutOfBoundsException( idx.toString )
-      val (_, x, _) = splitTree1( idx )
-      x
+//      val (_, x, _) = splitTree1( idx )
+//      x
+      apply1( idx )
    }
 
    def size : Int
@@ -33,4 +34,5 @@ trait IndexedSeqLike[ V, A, Repr <: IndexedSeqLike[ V, A, Repr ]] extends Finger
 
    protected def splitTreeAt( i: Int ) : (FingerTree[ V, A ], FingerTree[ V, A ])
    protected def splitTree1( i: Int ) : (FingerTree[ V, A ], A, FingerTree[ V, A ])
+   protected def apply1( i: Int ) : A
 }

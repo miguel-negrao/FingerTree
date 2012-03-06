@@ -35,6 +35,7 @@ object IndexedSeq {
       protected def wrap( tree: FingerTree[ Int, A ]) : IndexedSeq[ A ] = new Impl( tree )
       protected def splitTreeAt( i: Int ) = tree.split(  _ > i )
       protected def splitTree1(  i: Int ) = tree.split1( _ > i )
+      protected def apply1( i: Int )      = tree.find1( _ > i )
 
       def size : Int = tree.measure
    }

@@ -84,6 +84,7 @@ object FingerTree {
          (e, a, e)
       }
 
+      def find1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : A = a
 
       def toList : List[ A ] = a :: Nil
 
@@ -174,9 +175,17 @@ object FingerTree {
       }
 
       def split( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (FingerTree[ V, A ], FingerTree[ V, A ]) =
-         sys.error( "TODO" )
+         if( pred( measure )) {
+            val (left, elem, right) = split1( pred )
+            (left, elem +: right)
+         } else {
+            (this, empty[ V, A ])
+         }
 
       def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (FingerTree[ V, A ], A, FingerTree[ V, A ]) =
+         sys.error( "TODO" )
+
+      def find1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : A =
          sys.error( "TODO" )
 
       def toList : List[ A ] = iterator.toList
@@ -208,7 +217,10 @@ object FingerTree {
       def split( pred: V => Boolean )( implicit m: Measure[ Nothing, V ]) : (FingerTree[ V, Nothing ], FingerTree[ V, Nothing ]) = (this, this)
 
       def split1( pred: V => Boolean )( implicit m: Measure[ Nothing, V ]) : (FingerTree[ V, Nothing ], Nothing, FingerTree[ V, Nothing ]) =
-         throw new UnsupportedOperationException( "split on empty finger tree" )
+         throw new UnsupportedOperationException( "split1 on empty finger tree" )
+
+      def find1( pred: V => Boolean )( implicit m: Measure[ Nothing, V ]) : Nothing =
+         throw new UnsupportedOperationException( "find1 on empty finger tree" )
 
       def toList : List[ Nothing ] = Nil
 
@@ -246,6 +258,18 @@ object FingerTree {
    // ---- Digits ----
 
    private sealed trait Digit[ V, +A ] {
+      /**
+       * It is an open question whether caching the measurements of digits is preferable or not. As Hinze and
+       * Paterson write: "Because the length of the buffer is bounded by a constant, the number of ‘⊕’ operations
+       * is also bounded. Another possibility is to cache the measure of a digit, adding to the cost of digit
+       * construction but yielding a saving when computing the measure. The choice between these strategies
+       * would depend on the expected balance of query and modification operations, but they would differ only
+       * by a constant factor."
+       *
+       * The advantage of having the measurement stored (as we currently do) is that there is essentially no
+       * difference between `Two` and `Node2` and `Three` and `Node3`, thus we use digits where Hinze and Paterson
+       * use distinguished nodes.
+       */
       def measure: V
 
       def head : A
@@ -441,6 +465,7 @@ sealed trait FingerTree[ V, +A ] {
 
    /**
     * Same as `split1`, but drops the discerning element, instead only returning the left and right tree.
+    * Unlike `split1`, this is an allowed operation on an empty tree.
     *
     * @param pred a test function applied to the elements of the tree from left to right, until a
     *             the test returns `true`.
@@ -451,10 +476,27 @@ sealed trait FingerTree[ V, +A ] {
    /**
     * Traverses the tree until a predicate on an element becomes `true`, and then splits the tree,
     * returning the elements before that element, the element itself, and the remaining elements.
+    * Note that the returned discerning element corresponds to the last element in the tree, if
+    * `pred` returns `false` for every element (rather than a runtime exception being thrown).
+    *
+    * If the tree is empty, this throws a runtime exception.
     *
     * @param pred a test function applied to the elements of the tree from left to right, until a
     *             the test returns `true`.
     * @return  the split tree, as a `Tuple3` with the left tree, the discerning element, and the right tree
     */
-    def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (FingerTree[ V, A ], A, FingerTree[ V, A ])
+   def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (FingerTree[ V, A ], A, FingerTree[ V, A ])
+
+   /**
+    * Traverses the tree until a predicate on an element becomes `true`, and then returns that
+    * element. Note that if `pred` returns `false` for every element, the last element in the
+    * tree is returned (rather than a runtime exception being thrown).
+    *
+    * If the tree is empty, this throws a runtime exception.
+    *
+    * @param pred a test function applied to the elements of the tree from left to right, until a
+    *             the test returns `true`.
+    * @return  the discerning element
+    */
+   def find1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : A
 }

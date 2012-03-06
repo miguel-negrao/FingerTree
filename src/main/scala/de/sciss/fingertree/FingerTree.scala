@@ -86,6 +86,8 @@ object FingerTree {
 
       def find1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : A = a
 
+      private[fingertree] def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (V, A) = (init, a)
+
       def toList : List[ A ] = a :: Nil
 
       def iterator : Iterator[ A ] = Iterator.single( a )
@@ -185,8 +187,22 @@ object FingerTree {
       def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (FingerTree[ V, A ], A, FingerTree[ V, A ]) =
          sys.error( "TODO" )
 
-      def find1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : A =
-         sys.error( "TODO" )
+      def find1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : A = find1( pred, m.zero )._2
+
+      private[fingertree] def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (V, A) = {
+         val vPrefix = m.|+|( init, prefix.measure )
+         if( pred( vPrefix )) {  // found in prefix
+            (init, prefix.find1( pred, init ))
+         } else {
+            val vTree = m.|+|( vPrefix, tree.measure )
+            if( pred( vTree )) { // found in middle
+               val (vTreeLeft, xs) = tree.find1( pred, vPrefix )
+               (vTreeLeft, xs.find1( pred, vTreeLeft ))
+            } else {             // in suffix
+               (vTree, suffix.find1( pred, vTree ))
+            }
+         }
+      }
 
       def toList : List[ A ] = iterator.toList
 
@@ -220,6 +236,9 @@ object FingerTree {
          throw new UnsupportedOperationException( "split1 on empty finger tree" )
 
       def find1( pred: V => Boolean )( implicit m: Measure[ Nothing, V ]) : Nothing =
+         throw new UnsupportedOperationException( "find1 on empty finger tree" )
+
+      private[fingertree] def find1( pred: V => Boolean, init: V )( implicit m: Measure[ Nothing, V ]) : (V, Nothing) =
          throw new UnsupportedOperationException( "find1 on empty finger tree" )
 
       def toList : List[ Nothing ] = Nil
@@ -281,6 +300,8 @@ object FingerTree {
       def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ]
       def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ]
 
+      def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : A
+
       def toTree( implicit m: Measure[ A, V ]) : FingerTree[ V, A ]
 
       def toList : List[ A ]
@@ -297,6 +318,8 @@ object FingerTree {
 
       def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Two( m.|+|( m.unit( b ), measure ), b, a1 )
       def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Two( m.|+|( measure, m.unit( b )),  a1, b )
+
+      def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : A = a1
 
       def toTree( implicit m: Measure[ A, V ]) : FingerTree[ V, A ] = Single( measure, a1 )
 
@@ -316,6 +339,9 @@ object FingerTree {
 
       def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Three( m.|+|( m.unit( b ), measure ), b, a1, a2 )
       def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Three( m.|+|( measure, m.unit( b )),  a1, a2, b )
+
+      def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : A =
+         if( pred( m.unit( a1 ))) a1 else a2
 
       def toTree( implicit m: Measure[ A, V ]) : FingerTree[ V, A ] = a1 +: Single( m.unit( a2 ), a2 )
 
@@ -338,6 +364,11 @@ object FingerTree {
 
       def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] =
          Four( m.|+|( measure, m.unit( b )), a1, a2, a3, b )
+
+      def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : A = {
+         val v1 = m.unit( a1 )
+         if( pred( v1 )) a1 else if( pred( m.|+|( v1, m.unit( a2 )))) a2 else a3
+      }
 
       def toTree( implicit m: Measure[ A, V ]) : FingerTree[ V, A ] = a1 +: a2 +: Single( m.unit( a3 ), a3 )
 
@@ -362,6 +393,14 @@ object FingerTree {
 
       def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) =
          throw new UnsupportedOperationException( ":+ on digit four" )
+
+      def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : A = {
+         val v1 = m.unit( a1 )
+         if( pred( v1 )) a1 else {
+            val v12 = m.|+|( v1, m.unit( a2 ))
+            if( pred( v12 )) a2 else if( pred( m.|+|( v12, m.unit( a3 )))) a3 else a4
+         }
+      }
 
       def toTree( implicit m: Measure[ A, V ]) : FingerTree[ V, A ] = a1 +: a2 +: a3 +: Single( m.unit( a4 ), a4 )
 
@@ -499,4 +538,6 @@ sealed trait FingerTree[ V, +A ] {
     * @return  the discerning element
     */
    def find1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : A
+
+   private[fingertree] def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (V, A)
 }

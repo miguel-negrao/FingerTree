@@ -7,3 +7,5 @@ organization := "de.sciss"
 scalaVersion := "2.9.1"
 
 scalacOptions ++= Seq( "-deprecation", "-unchecked" )
+
+initialCommands in console := """import de.sciss.fingertree._"""

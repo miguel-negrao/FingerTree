@@ -20,7 +20,7 @@ You can either implement your own data structure by wrapping a plain `FingerTree
 
 Or you can use any of the provided ready-made data structures, such as `IndexedSeq` or `IndexedSummedSeq`. While the former might not be particularly interesting, as it does not add any functionality that is not found already in Scala's own immutable `IndexedSeq` (i.e. `Vector`), the latter provides the additional feature of measuring not just the indexed positions of the tree elements, but also an accumulative "sum" of any sort.
 
-The core element for new structures is to provide an instance of `Measure` which is used by the finger tree to calculate the annotated meta data of the elements. The measure provdes a `zero` value, a `unit` method which measures exactly one element, and a summation method `|+|` which accumulates measured data. To work correctly with the caching mechanism of the finger tree, `|+|` must be associative, i.e. `(a |+| b) |+| c = a |+| (b) |+| c)`.
+The core element for new structures is to provide an instance of `Measure` which is used by the finger tree to calculate the annotated meta data of the elements. The measure provdes a `zero` value, a `unit` method which measures exactly one element, and a summation method `|+|` which accumulates measured data. To work correctly with the caching mechanism of the finger tree, `|+|` must be associative, i.e. `(a |+| b) |+| c = a |+| (b |+| c)`.
 
 Future versions will provide more ready-made structures, such as ordered sequences and interval sequences. In the meantime, you can check out the previous Scalaz based version of this project at git tag `Scalaz`, which includes those structures.
 

@@ -14,6 +14,16 @@ The current implementation is a rewrite of previous versions. It tries to combin
 
 This builds with Scala 2.9.1 and sbt 0.11.2. Standard targets are `compile`, `package`, `doc`, `console`, `test`, `publish-local`.
 
+### using
+
+You can either implement your own data structure by wrapping a plain `FingerTree` instance. Trait `FingerTreeLike` can be used as a basis, it has two abstract methods `tree` and `wrap` which would need to be implemented.
+
+Or you can use any of the provided ready-made data structures, such as `IndexedSeq` or `IndexedSummedSeq`. While the former might not be particularly interesting, as it does not add any functionality that is not found already in Scala's own immutable `IndexedSeq` (i.e. `Vector`), the latter provides the additional feature of measuring not just the indexed positions of the tree elements, but also an accumulative "sum" of any sort.
+
+The core element for new structures is to provide an instance of `Measure` which is used by the finger tree to calculate the annotated meta data of the elements. The measure provdes a `zero` value, a `unit` method which measures exactly one element, and a summation method `|+|` which accumulates measured data. To work correctly with the caching mechanism of the finger tree, `|+|` must be associative, i.e. `(a |+| b) |+| c = a |+| (b) |+| c)`.
+
+Future versions will provide more ready-made structures, such as ordered sequences and interval sequences. In the meantime, you can check out the previous Scalaz based version of this project at git tag `Scalaz`, which includes those structures.
+
 ### creating an IntelliJ IDEA project
 
 To develop the sources of FingerTree in IntelliJ IDEA, if you haven't globally installed the sbt-idea plugin yet, create the following contents in `~/.sbt/plugins/build.sbt`:

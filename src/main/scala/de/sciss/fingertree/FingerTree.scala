@@ -35,7 +35,7 @@ object FingerTree {
       new Measure[ Digit[ V, A ], V ] {
          def zero : V = m.zero
          def |+|( a: V, b: V ) : V = m.|+|( a, b )
-         def unit( n: Digit[ V, A ]) : V = n.measure
+         def apply( n: Digit[ V, A ]) : V = n.measure
       }
 
    // ---- Trees ----
@@ -52,17 +52,17 @@ object FingerTree {
       def isEmpty = false
 
       def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : FingerTree[ V, A1 ] = {
-         val vPrefix = m.unit( b )
+         val vPrefix = m( b )
          val prefix  = One( vPrefix, b )
-         val vSuffix = m.unit( a )
+         val vSuffix = m( a )
          val suffix = One( vSuffix, a )
          Deep( m.|+|( vPrefix, vSuffix ), prefix, empty[ V, Digit[ V, A1 ]], suffix )
       }
 
       def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : FingerTree[ V, A1 ] = {
-         val vPrefix = m.unit( a )
+         val vPrefix = m( a )
          val prefix  = One( vPrefix, a )
-         val vSuffix = m.unit( b )
+         val vSuffix = m( b )
          val suffix  = One( vSuffix, b )
          Deep( m.|+|( vPrefix, vSuffix ), prefix, empty[ V, Digit[ V, A1 ]], suffix )
       }
@@ -72,7 +72,7 @@ object FingerTree {
 
       def split( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (FingerTree[ V, A ], FingerTree[ V, A ]) = {
          val e = empty[ V, A ]
-         if( pred( m.unit( a ))) {
+         if( pred( m( a ))) {
             (e, this)
          } else {
             (this, e)
@@ -110,12 +110,12 @@ object FingerTree {
       def init( implicit m: Measure[ A, V ]) : FingerTree[ V, A ] = viewRight.tail
 
       def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : FingerTree[ V, A1 ] = {
-         val vb   = m.unit( b )
+         val vb   = m( b )
          val vNew = m.|+|( vb, measure )
          prefix match {
             case Four( _, d, e, f, g ) =>
-               val prefix     = Two( m.|+|( vb, m.unit( d )), b, d )
-               val vTreePefix = m.|+|( m.|+|( m.unit( e ), m.unit( f )), m.unit( g ))
+               val prefix     = Two( m.|+|( vb, m( d )), b, d )
+               val vTreePefix = m.|+|( m.|+|( m( e ), m( f )), m( g ))
                val treeNew    = tree.+:[ Digit[ V, A1 ]]( Three( vTreePefix, e, f, g ))
                Deep( vNew, prefix, treeNew, suffix )
 
@@ -125,13 +125,13 @@ object FingerTree {
       }
 
       def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : FingerTree[ V, A1 ] = {
-         val vb   = m.unit( b )
+         val vb   = m( b )
          val vNew = m.|+|( vb, measure )
          suffix match {
             case Four( _, g, f, e, d ) =>
-               val vTreeSuffix= m.|+|( m.|+|( m.unit( g ), m.unit( f )), m.unit( e ))
+               val vTreeSuffix= m.|+|( m.|+|( m( g ), m( f )), m( e ))
                val treeNew    = tree.:+[ Digit[ V, A1 ]]( Three( vTreeSuffix, g, f, e ))
-               val suffix     = Two( m.|+|( m.unit( d ), vb ), d, b )
+               val suffix     = Two( m.|+|( m( d ), vb ), d, b )
                Deep( vNew, prefix, treeNew, suffix )
             case partial =>
                Deep( vNew, prefix, tree, partial :+ b )
@@ -184,8 +184,21 @@ object FingerTree {
             (this, empty[ V, A ])
          }
 
-      def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (FingerTree[ V, A ], A, FingerTree[ V, A ]) =
+      def split1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : (FingerTree[ V, A ], A, FingerTree[ V, A ]) = {
          sys.error( "TODO" )
+//         val vPrefix = m.|+|( init, prefix.measure )
+//         if( pred( vPrefix )) {  // found in prefix
+//            prefix.split1( pred, init )
+//         } else {
+//            val vTree = m.|+|( vPrefix, tree.measure )
+//            if( pred( vTree )) { // found in middle
+//               val (vTreeLeft, xs) = tree.find1( pred, vPrefix )
+//               (vTreeLeft, xs.find1( pred, vTreeLeft ))
+//            } else {             // in suffix
+//               (vTree, suffix.find1( pred, vTree ))
+//            }
+//         }
+      }
 
       def find1( pred: V => Boolean )( implicit m: Measure[ A, V ]) : A = find1( pred, m.zero )._2
 
@@ -224,8 +237,8 @@ object FingerTree {
       def init( implicit m: Measure[ Nothing, V ]) : FingerTree[ V, Nothing ] =
          throw new UnsupportedOperationException( "init of empty finger tree" )
 
-      def +:[ A1 ]( a1: A1 )( implicit m: Measure[ A1, V ]) : FingerTree[ V, A1 ] = Single( m.unit( a1 ), a1 )
-      def :+[ A1 ]( a1: A1 )( implicit m: Measure[ A1, V ]) : FingerTree[ V, A1 ] = Single( m.unit( a1 ), a1 )
+      def +:[ A1 ]( a1: A1 )( implicit m: Measure[ A1, V ]) : FingerTree[ V, A1 ] = Single( m( a1 ), a1 )
+      def :+[ A1 ]( a1: A1 )( implicit m: Measure[ A1, V ]) : FingerTree[ V, A1 ] = Single( m( a1 ), a1 )
 
       def viewLeft(  implicit m: Measure[ Nothing, V ]) : ViewLeft[  V, Nothing ] = ViewNilLeft[  V ]()
       def viewRight( implicit m: Measure[ Nothing, V ]) : ViewRight[ V, Nothing ] = ViewNilRight[ V ]()
@@ -301,6 +314,7 @@ object FingerTree {
       def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ]
 
       def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : A
+      def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (FingerTree[ V, A ], A, FingerTree[ V, A ])
 
       def toTree( implicit m: Measure[ A, V ]) : FingerTree[ V, A ]
 
@@ -316,10 +330,15 @@ object FingerTree {
       def last = a1
       def init( implicit m: Measure[ A, V ]) : Digit[ V, A ] = throw new UnsupportedOperationException( "tail of digit one" )
 
-      def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Two( m.|+|( m.unit( b ), measure ), b, a1 )
-      def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Two( m.|+|( measure, m.unit( b )),  a1, b )
+      def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Two( m.|+|( m( b ), measure ), b, a1 )
+      def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Two( m.|+|( measure, m( b )),  a1, b )
 
       def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : A = a1
+
+      def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (FingerTree[ V, A ], A, FingerTree[ V, A ]) = {
+         val e = empty[ V, A ]
+         (e, a1, e)
+      }
 
       def toTree( implicit m: Measure[ A, V ]) : FingerTree[ V, A ] = Single( measure, a1 )
 
@@ -332,18 +351,30 @@ object FingerTree {
 
    final private case class Two[ V, A ]( measure: V, a1: A, a2: A ) extends Digit[ V, A ] {
       def head  = a1
-      def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] = One( m.unit( a2 ), a2 )
+      def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] = One( m( a2 ), a2 )
 
       def last = a2
-      def init( implicit m: Measure[ A, V ]) : Digit[ V, A ] = One( m.unit( a1 ), a1 )
+      def init( implicit m: Measure[ A, V ]) : Digit[ V, A ] = One( m( a1 ), a1 )
 
-      def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Three( m.|+|( m.unit( b ), measure ), b, a1, a2 )
-      def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Three( m.|+|( measure, m.unit( b )),  a1, a2, b )
+      def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Three( m.|+|( m( b ), measure ), b, a1, a2 )
+      def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] = Three( m.|+|( measure, m( b )),  a1, a2, b )
 
       def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : A =
-         if( pred( m.unit( a1 ))) a1 else a2
+         if( pred( m.|+|( init, m( a1 )))) a1 else a2
 
-      def toTree( implicit m: Measure[ A, V ]) : FingerTree[ V, A ] = a1 +: Single( m.unit( a2 ), a2 )
+      def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (FingerTree[ V, A ], A, FingerTree[ V, A ]) = {
+         val va1  = m( a1 )
+         val v1   = m.|+|( init, va1 )
+         val e    = empty[ V, A ]
+         if( pred( v1 )) {
+            (e, a1, Single( m( a2 ), a2 ))
+         } else {
+            (Single( va1, a1 ), a2, e)
+         }
+      }
+
+      // TODO: optimise (we can create the Deep structure right away)
+      def toTree( implicit m: Measure[ A, V ]) : FingerTree[ V, A ] = a1 +: Single( m( a2 ), a2 )
 
       def toList : List[ A ] = a1 :: a2 :: Nil
 
@@ -354,23 +385,38 @@ object FingerTree {
 
    final private case class Three[ V, A ]( measure: V, a1: A, a2: A, a3: A ) extends Digit[ V, A ] {
       def head  = a1
-      def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] = Two( m.|+|( m.unit( a2 ), m.unit( a3 )), a2, a3 )
+      def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] = Two( m.|+|( m( a2 ), m( a3 )), a2, a3 )
 
       def last = a3
-      def init( implicit m: Measure[ A, V ]) : Digit[ V, A ] = Two( m.|+|( m.unit( a1 ), m.unit( a2 )), a1, a2 )
+      def init( implicit m: Measure[ A, V ]) : Digit[ V, A ] = Two( m.|+|( m( a1 ), m( a2 )), a1, a2 )
 
       def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] =
-         Four( m.|+|( m.unit( b ), measure ), b, a1, a2, a3 )
+         Four( m.|+|( m( b ), measure ), b, a1, a2, a3 )
 
       def :+[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) : Digit[ V, A1 ] =
-         Four( m.|+|( measure, m.unit( b )), a1, a2, a3, b )
+         Four( m.|+|( measure, m( b )), a1, a2, a3, b )
 
       def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : A = {
-         val v1 = m.unit( a1 )
-         if( pred( v1 )) a1 else if( pred( m.|+|( v1, m.unit( a2 )))) a2 else a3
+         val v1 = m.|+|( init, m( a1 ))
+         if( pred( v1 )) a1 else if( pred( m.|+|( v1, m( a2 )))) a2 else a3
       }
 
-      def toTree( implicit m: Measure[ A, V ]) : FingerTree[ V, A ] = a1 +: a2 +: Single( m.unit( a3 ), a3 )
+      def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (FingerTree[ V, A ], A, FingerTree[ V, A ]) = {
+         sys.error( "TODO" )
+//         val va1  = m.unit( a1 )
+//         val va2  = m.unit( a2 )
+//         val v1   = m.|+|( init, va1 )
+//         val e    = empty[ V, A ]
+//         if( pred( v1 )) {
+//            (e, a1, Single( m.unit( a2 ), a2 ))
+//         } else {
+//
+//            (Single( va1, a1 ), a2, e)
+//         }
+      }
+
+      // TODO: optimise (we can create the Deep structure right away)
+      def toTree( implicit m: Measure[ A, V ]) : FingerTree[ V, A ] = a1 +: a2 +: Single( m( a3 ), a3 )
 
       def toList : List[ A ] = a1 :: a2 :: a3 :: Nil
 
@@ -382,11 +428,11 @@ object FingerTree {
    final private case class Four[ V, A ]( measure: V, a1: A, a2: A, a3: A, a4: A ) extends Digit[ V, A ] {
       def head  = a1
       def tail( implicit m: Measure[ A, V ]) : Digit[ V, A ] =
-         Three( m.|+|( m.|+|( m.unit( a2 ), m.unit( a3 )), m.unit( a4 )), a2, a3, a4 )
+         Three( m.|+|( m.|+|( m( a2 ), m( a3 )), m( a4 )), a2, a3, a4 )
 
       def last = a4
       def init( implicit m: Measure[ A, V ]) : Digit[ V, A ] =
-         Three( m.|+|( m.|+|( m.unit( a1 ), m.unit( a2 )), m.unit( a3 )), a1, a2, a3 )
+         Three( m.|+|( m.|+|( m( a1 ), m( a2 )), m( a3 )), a1, a2, a3 )
 
       def +:[ A1 >: A ]( b: A1 )( implicit m: Measure[ A1, V ]) =
          throw new UnsupportedOperationException( "+: on digit four" )
@@ -395,14 +441,19 @@ object FingerTree {
          throw new UnsupportedOperationException( ":+ on digit four" )
 
       def find1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : A = {
-         val v1 = m.unit( a1 )
+         val v1 = m.|+|( init, m( a1 ))
          if( pred( v1 )) a1 else {
-            val v12 = m.|+|( v1, m.unit( a2 ))
-            if( pred( v12 )) a2 else if( pred( m.|+|( v12, m.unit( a3 )))) a3 else a4
+            val v12 = m.|+|( v1, m( a2 ))
+            if( pred( v12 )) a2 else if( pred( m.|+|( v12, m( a3 )))) a3 else a4
          }
       }
 
-      def toTree( implicit m: Measure[ A, V ]) : FingerTree[ V, A ] = a1 +: a2 +: a3 +: Single( m.unit( a4 ), a4 )
+      def split1( pred: V => Boolean, init: V )( implicit m: Measure[ A, V ]) : (FingerTree[ V, A ], A, FingerTree[ V, A ]) = {
+         sys.error( "TODO" )
+      }
+
+      // TODO: optimise (we can create the Deep structure right away)
+      def toTree( implicit m: Measure[ A, V ]) : FingerTree[ V, A ] = a1 +: a2 +: a3 +: Single( m( a4 ), a4 )
 
       def toList : List[ A ] = a1 :: a2 :: a3 :: a4 :: Nil
 

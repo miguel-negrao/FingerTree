@@ -128,8 +128,8 @@ object FingerTree {
          prefix match {
             case Four( _, d, e, f, g ) =>
                val prefix     = Two( m |+| (vb, m( d )), b, d )
-               val vTreePefix = m |+| (m( e ), m( f ), m( g ))
-               val treeNew    = tree.+:[ Digit[ V, A1 ]]( Three( vTreePefix, e, f, g ))
+               val vTreePrefix = m |+| (m( e ), m( f ), m( g ))
+               val treeNew    = tree.+:[ Digit[ V, A1 ]]( Three( vTreePrefix, e, f, g ))
                Deep( vNew, prefix, treeNew, suffix )
 
             case partial =>
